@@ -1,13 +1,14 @@
 # PEKET
 ``peket``: **P**yCBC **E**xtension for **K**ilonova **E**mission **T**argeting
+
 **NOTE**: ``peket`` is still under development. A basic documentation is available below in the markdown. Feel free to contact me for any questions.
 
 ## Add-on Package for PyCBC and NMMA/FIESTA
-Contains a command line-tool ``gw-setup-pipeline`` that performs coherent GW search (using PyCBC ``pycbc_multi_inspiral`` as its backend) based on properties inferred from KNe.
+Contains a command line-tool ``gw-setup-pipeline`` that performs coherent GW search (using ``pycbc_multi_inspiral`` as its backend) based on properties inferred from KNe.
 
 Another command line-tool, ``kn-make-grid`` is also available. This command-line generates a grid of lightcurve using the Bu2026_MLP model using FIESTA/NMMA (see below). 
 
-A third command line-tool is available, ``kn-ts-loop`` to perform inference with ``NMMA``, repeatedly removing the first detection point to see the evolution of the timeshift inference. 
+A third command line-tool is available, ``kn-ts-loop`` to perform inference with NMMA, repeatedly removing the first detection point to see the evolution of the timeshift inference. 
 
 ## Changelog (0.1.0)
 Found a name and reorganized the structure. ("Beta" version available [here](https://github.com/NJamsin/KN_GW-BNS-master/tree/package))
@@ -16,7 +17,7 @@ Completely changed the pre-treatment of the .gwf files. Now uses cache files (.l
 
 Modified the ``--monitor`` argument to correctly print errors. 
 
-Added a ``--detector-treshold`` argument for injection to early-stop the search if the detector response is to low with respect to the sky position of the injected signal.
+Added a ``--detector-threshold`` argument for injection to early-stop the search if the detector response is to low with respect to the sky position of the injected signal.
 
 ### ``kn-make-grid``
 Added supports for ``Bu2019lm`` and ``Ka2017``. /!\ ``Bu2019lm`` requires a small modification to nmma's code (see below).
@@ -28,7 +29,7 @@ Added a new command-line tool to iteratively perform inference on light curve da
 
 Enhance the robustness of the timeshift loop to avoid skipping the resampling in case of early-stop of the first loop.
 
-### IMPORTANT REMARK !
+### IMPORTANT REMARK BEFORE INSTALLATION!
 ``gw-setup-pipeline`` requires and uses [HTCondor](https://htcondor.readthedocs.io/en/latest/) a lot (creates multiples .sub or .dag files), make sure that you have HTCondor installed on your device. Dynamic slots are recommended as the main job submitted by ``gw-setup-pipeline`` reserves 16 Gb of RAM and each sub job that performs the coherent search reserves 4 Gb of RAM (a bit much, could be manually reduced if needed).
 
 If you want to use ``kn-make-grid`` and ``kn-ts-loop`` make sure to build [FIESTA](https://github.com/nuclear-multimessenger-astronomy/fiestaEM/tree/main) and [NMMA](https://github.com/nuclear-multimessenger-astronomy/nmma) (/!\ NMMA requires python 3.12) from source in the same environment as this package and for this command, HTCondor is not required ! 
@@ -90,7 +91,7 @@ pip install -e .
 - ``--skip-search``: If true, will skip the search step and directly run the post-processing script. Only works if you already have triggers generated from a previous search run.
 - ``--plot-spectrogram``: If true, will generate a spectrogram plot for the top trigger in the post-processing step. This can be useful for visually inspecting the trigger.
   - ``--spectrogram-range``: vmin and vmax for the spectrogram plot. Only used if ``--plot-spectrogram`` is set, default values are ``vmin=0, vmax=15``.
-- ``--detector-treshold``: Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source. Only applied to injections because the merger time is needed for the antenna pattern.
+- ``--detector-threshold``: Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source. Only applied to injections because the merger time is needed for the antenna pattern.
 - ``--plot-antenna-pattern``: If true, will generate an antenna pattern plot for the source location and the injection merger time. **Only applied to injections** because the merger time is needed for the antenna response. /!\ The plot is generated at the end of the preparation so if the search is stopped by the threshold it won't be generated.
 - ``--template-bank``: Path to the template bank file if you want to specify it instead of generating through the resampling posterior. This can be useful if you want to use a custom template bank or if you want to skip the template bank generation step.
 - ``--monitor``: If true, will monitor the pipeline execution. /!\ Won't have any effect if you use ``--skip-search``.
