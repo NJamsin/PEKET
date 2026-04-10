@@ -1,13 +1,13 @@
-executable = /home/stu_jamsin/master_package/test_injection/sub_files/run_split_search.sh
+executable = /home/stu_jamsin/peket/test_injection/sub_files/run_split_search.sh
     universe   = vanilla
 
     # Pass the three variables from the text file to the bash script
     arguments  = "$(bank) $(start) $(end) $(tt)"
 
     # Ensure logs don't overwrite each other + change path (I went for absolute path just to be sure)
-    output     = /home/stu_jamsin/master_package/test_injection/logs/inj_search_$(bank)_$(start).out
-    error      = /home/stu_jamsin/master_package/test_injection/logs/inj_search_$(bank)_$(start).err
-    log        = /home/stu_jamsin/master_package/test_injection/logs/inj_search_cluster.log
+    output     = /home/stu_jamsin/peket/test_injection/logs/inj_search_$(bank)_$(start).out
+    error      = /home/stu_jamsin/peket/test_injection/logs/inj_search_$(bank)_$(start).err
+    log        = /home/stu_jamsin/peket/test_injection/logs/inj_search_cluster.log
 
     # Request resources (adjust these according to your cluster's limits)
     request_cpus   = 1
@@ -15,4 +15,4 @@ executable = /home/stu_jamsin/master_package/test_injection/sub_files/run_split_
     request_disk   = 1MB
 
     # Queue a job for every line in the text file
-    queue bank, start, end, tt from /home/stu_jamsin/master_package/test_injection/inj_windows.txt
+    queue bank, start, end, tt from /home/stu_jamsin/peket/test_injection/inj_windows.txt

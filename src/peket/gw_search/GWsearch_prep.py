@@ -33,7 +33,7 @@ def main():
     parser.add_argument("config", help="Path to the config file")
     parser.add_argument("--injection", action="store_true", help="Inject a fake signal")
     parser.add_argument("--template-bank", default=None, help="Path to the template bank file if you want to specify it instead of generating through the resampling posterior. This can be useful if you want to use a custom template bank or if you want to skip the template bank generation step for testing purposes.")
-    parser.add_argument("--detector-treshold", default=0.5, type=float, help="Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source.")
+    parser.add_argument("--detector-threshold", default=0.5, type=float, help="Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source.")
     parser.add_argument("--plot-antenna-pattern", default=None, action="store_true", help="If true, will generate an antenna pattern plot for the source location and the injection merger time. Only applied to injections because the merger time is needed for the antenna response.")
     args = parser.parse_args()
 
@@ -298,8 +298,8 @@ def main():
                 f_plus, f_cross = det.antenna_pattern(inj['ra'], inj['dec'], inj['polarization'], merger_time)
                 # Calculate the total response (Scale of 0 to 1)
                 total_response = np.sqrt(f_plus**2 + f_cross**2)
-                if args.detector_treshold and total_response < args.detector_treshold:
-                    print(f"    *** Antenna response for this injection is {total_response:.2f}, which is below the specified threshold of {args.detector_treshold}. Stopping the search. ***")
+                if args.detector_threshold and total_response < args.detector_threshold:
+                    print(f"    *** Antenna response for this injection is {total_response:.2f}, which is below the specified threshold of {args.detector_threshold}. Stopping the search. ***")
                     sys.exit(0)
                 ht = det.project_wave(hp, hc, inj['ra'], inj['dec'], inj['polarization'], reference_time=merger_time)
                 

@@ -1,0 +1,10 @@
+2026-04-10T13:08:27.970+02:00 INFO : Obtaining PSD
+2026-04-10T13:08:28.103+02:00 INFO : Calculating metric
+2026-04-10T13:08:29.533+02:00 INFO : Calculating covariance matrix
+2026-04-10T13:08:31.018+02:00 INFO : Estimating extent of parameter space
+2026-04-10T13:08:38.672+02:00 INFO : Calculating lattice
+2026-04-10T13:08:39.603+02:00 INFO : 6772 points in the lattice
+2026-04-10T13:08:42.553+02:00 INFO : Sorting guide points
+2026-04-10T13:08:44.406+02:00 INFO : Converting to physical points
+2026-04-10T13:09:25.312+02:00 INFO : Writing output to file /home/stu_jamsin/peket/test_injection/inj_tmplt.hdf
+2026-04-10T13:09:25.318+02:00 INFO : Done

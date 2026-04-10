@@ -2,9 +2,9 @@ executable     = /home/stu_jamsin/.conda/envs/fiesta/bin/gw-search-prep
 arguments      = $(config) --injection --detector-treshold 0.5 --plot-antenna-pattern
 universe       = vanilla
 
-output         = /home/stu_jamsin/master_package/test_injection/logs/prep.out
-error          = /home/stu_jamsin/master_package/test_injection/logs/prep.err
-log            = /home/stu_jamsin/master_package/test_injection/logs/pipeline.log
+output         = /home/stu_jamsin/peket/test_injection/logs/prep.out
+error          = /home/stu_jamsin/peket/test_injection/logs/prep.err
+log            = /home/stu_jamsin/peket/test_injection/logs/pipeline.log
 
 environment    = "PYTHONUNBUFFERED=1"
 

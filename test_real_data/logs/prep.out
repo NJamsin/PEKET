@@ -1,11 +1,32 @@
-Template bank file /home/stu_jamsin/master_package/test_real_data/test_run_tmplt.hdf already exists. Skipping generation.
-All split bank files already exist in /home/stu_jamsin/master_package/test_real_data/test_run_split. Skipping splitting.
+Generating non-spinning geometric template bank
+Template bank generated and saved as '/home/stu_jamsin/peket/test_real_data/test_run_tmplt.hdf'
+Split template banks generated and saved in '/home/stu_jamsin/peket/test_real_data/test_run_split'
 Template bank mass distribution plot saved as 'test_run_template_bank.png'
 
 Defined search window based on EM posterior samples:
-MJD time: (np.float64(57982.522698047855), np.float64(57982.54291952576))
-GPS time: 1187008379 to 1187010126
-Generated /home/stu_jamsin/master_package/test_real_data/test_run_windows.txt
-Cleaned and merged files /home/stu_jamsin/master_package/test_real_data/data/test_run_H1.lcf and /home/stu_jamsin/master_package/test_real_data/data/test_run_L1.lcf already exist. Skipping download and preparation.
-Successfully generated '/home/stu_jamsin/master_package/test_real_data/sub_files/run_split_search.sh' and '/home/stu_jamsin/master_package/test_real_data/sub_files/split_search.sub'
+MJD time: (np.float64(57982.501006745195), np.float64(57982.52888537409))
+GPS time: 1187006504 to 1187008913
+Generated /home/stu_jamsin/peket/test_real_data/test_run_windows.txt
+Locating 4kHz data for H1...
+Downloading H-H1_GWOSC_O2_4KHZ_R1-1187004416-4096.gwf...
+Downloading H-H1_GWOSC_O2_4KHZ_R1-1187008512-4096.gwf...
+Locating 4kHz data for L1...
+Downloading L-L1_GWOSC_O2_4KHZ_R1-1187004416-4096.gwf...
+Downloading L-L1_GWOSC_O2_4KHZ_R1-1187008512-4096.gwf...
+
+--- Download Complete ---
+H1 Frame File(s): /home/stu_jamsin/peket/test_real_data/data/H-H1_GWOSC_O2_4KHZ_R1-1187004416-4096.gwf,/home/stu_jamsin/peket/test_real_data/data/H-H1_GWOSC_O2_4KHZ_R1-1187008512-4096.gwf
+L1 Frame File(s): /home/stu_jamsin/peket/test_real_data/data/L-L1_GWOSC_O2_4KHZ_R1-1187004416-4096.gwf,/home/stu_jamsin/peket/test_real_data/data/L-L1_GWOSC_O2_4KHZ_R1-1187008512-4096.gwf
+Processing strain data files for H1:GWOSC-4KHZ_R1_STRAIN...
+ -> Chunk 0: 1187006456 to 1187008961
+Replacing NaN values with Gaussian noise...
+Processing strain data files for L1:GWOSC-4KHZ_R1_STRAIN...
+ -> Chunk 0: 1187006456 to 1187008961
+Replacing NaN values with Gaussian noise...
+Completed! The files are ready for PyCBC.
+Deleted /home/stu_jamsin/peket/test_real_data/data/H-H1_GWOSC_O2_4KHZ_R1-1187004416-4096.gwf
+Deleted /home/stu_jamsin/peket/test_real_data/data/H-H1_GWOSC_O2_4KHZ_R1-1187008512-4096.gwf
+Deleted /home/stu_jamsin/peket/test_real_data/data/L-L1_GWOSC_O2_4KHZ_R1-1187004416-4096.gwf
+Deleted /home/stu_jamsin/peket/test_real_data/data/L-L1_GWOSC_O2_4KHZ_R1-1187008512-4096.gwf
+Successfully generated '/home/stu_jamsin/peket/test_real_data/sub_files/run_split_search.sh' and '/home/stu_jamsin/peket/test_real_data/sub_files/split_search.sub'
 Search preparation complete!

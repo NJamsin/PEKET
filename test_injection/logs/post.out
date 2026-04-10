@@ -1,23 +1,23 @@
-Scanning 160 files in /home/stu_jamsin/master_package/test_injection/out...
+Scanning 160 files in /home/stu_jamsin/peket/test_injection/out...
 
 Collected 1600 candidate triggers.
 Ranking Statistic used: reweighted_snr
 
 --- Top 5 Candidate Signals ---
-1. Rank Stat: 54.1522 | Coherent SNR: 66.7019 | Time: 1262233720.9976 | File: injtriggers_bank4_1262231145-1262234745.hdf
-2. Rank Stat: 34.4763 | Coherent SNR: 65.3173 | Time: 1262233720.9980 | File: injtriggers_bank7_1262231145-1262234745.hdf
-3. Rank Stat: 32.7357 | Coherent SNR: 65.4022 | Time: 1262233720.9976 | File: injtriggers_bank7_1262231145-1262234745.hdf
-4. Rank Stat: 31.6205 | Coherent SNR: 65.0697 | Time: 1262233720.9980 | File: injtriggers_bank9_1262231145-1262234745.hdf
-5. Rank Stat: 27.4829 | Coherent SNR: 64.3061 | Time: 1262233720.9973 | File: injtriggers_bank4_1262231145-1262234745.hdf
+1. Rank Stat: 48.8967 | Coherent SNR: 75.1179 | Time: 1262233720.9976 | File: injtriggers_bank4_1262231145-1262234745.hdf
+2. Rank Stat: 37.5746 | Coherent SNR: 73.9597 | Time: 1262233720.9980 | File: injtriggers_bank7_1262231145-1262234745.hdf
+3. Rank Stat: 31.2005 | Coherent SNR: 73.0228 | Time: 1262233720.9980 | File: injtriggers_bank9_1262231145-1262234745.hdf
+4. Rank Stat: 30.1525 | Coherent SNR: 73.0574 | Time: 1262233720.9976 | File: injtriggers_bank7_1262231145-1262234745.hdf
+5. Rank Stat: 27.5761 | Coherent SNR: 72.0099 | Time: 1262233720.9985 | File: injtriggers_bank9_1262231145-1262234745.hdf
 
 Generating plot for trigger distribution
 Loaded injection trigger time: 1262233721.0 (GPS)
 Best Candidate Time: 1262233721.00 (GPS)
 
 Generating spectrogram for the best candidate
-Reading data from cache: /home/stu_jamsin/master_package/test_injection/data/inj_H1.lcf...
+Reading data from cache: /home/stu_jamsin/peket/test_injection/data/inj_H1.lcf...
 Saved spectrogram for H1 as 'inj_H1_best_candidate_spectrogram.png'
-Reading data from cache: /home/stu_jamsin/master_package/test_injection/data/inj_L1.lcf...
+Reading data from cache: /home/stu_jamsin/peket/test_injection/data/inj_L1.lcf...
 Saved spectrogram for L1 as 'inj_L1_best_candidate_spectrogram.png'
 
 

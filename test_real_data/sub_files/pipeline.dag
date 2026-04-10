@@ -1,11 +1,11 @@
 # Define the nodes
-JOB PREP /home/stu_jamsin/master_package/test_real_data/sub_files/prep.sub
-JOB SEARCH /home/stu_jamsin/master_package/test_real_data/sub_files/split_search.sub
-JOB POST /home/stu_jamsin/master_package/test_real_data/sub_files/post.sub
+JOB PREP /home/stu_jamsin/peket/test_real_data/sub_files/prep.sub
+JOB SEARCH /home/stu_jamsin/peket/test_real_data/sub_files/split_search.sub
+JOB POST /home/stu_jamsin/peket/test_real_data/sub_files/post.sub
 
 # Pass the config file path into the prep and post jobs dynamically
-VARS PREP config="/home/stu_jamsin/master_package/example_file/real_KN/example_170817config.yaml"
-VARS POST config="/home/stu_jamsin/master_package/example_file/real_KN/example_170817config.yaml"
+VARS PREP config="/home/stu_jamsin/peket/example_file/real_KN/example_170817config.yaml"
+VARS POST config="/home/stu_jamsin/peket/example_file/real_KN/example_170817config.yaml"
 
 # Define the workflow dependencies
 PARENT PREP CHILD SEARCH

@@ -1,0 +1,10 @@
+2026-04-10T13:02:11.029+02:00 INFO : Obtaining PSD
+2026-04-10T13:02:11.165+02:00 INFO : Calculating metric
+2026-04-10T13:02:12.610+02:00 INFO : Calculating covariance matrix
+2026-04-10T13:02:14.138+02:00 INFO : Estimating extent of parameter space
+2026-04-10T13:02:21.826+02:00 INFO : Calculating lattice
+2026-04-10T13:02:25.702+02:00 INFO : 945 points in the lattice
+2026-04-10T13:02:28.630+02:00 INFO : Sorting guide points
+2026-04-10T13:02:30.594+02:00 INFO : Converting to physical points
+2026-04-10T13:02:30.909+02:00 INFO : Writing output to file /home/stu_jamsin/peket/test_real_data/test_run_tmplt.hdf
+2026-04-10T13:02:30.912+02:00 INFO : Done

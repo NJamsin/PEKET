@@ -23,8 +23,8 @@ def main():
     parser.add_argument("--spectrogram-range", default="0,15", help="vmin and vmax for the spectrogram plot. Only used if --plot-spectrogram is set.")
     parser.add_argument("--monitor", default=False, action="store_true", help="If true, will monitor the pipeline execution.")
     parser.add_argument("--template-bank", default=None, help="Path to the template bank file if you want to specify it instead of generating through the resampling posterior. This can be useful if you want to use a custom template bank or if you want to skip the template bank generation. The template bank will still be split for parrallelization. /!\\ Expect an hdf file.")
-    parser.add_argument("--detector-treshold", default=0.5, type=float, help="Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source. Only applied to injections because the merger time is needed for the antenna response.")
-    parser.add_argument("--plot-antenna-pattern", default=None, action="store_true", help="If true, will generate an antenna pattern plot for the source location and the injection merger time. Only applied to injections because the merger time is needed for the antenna response. /!\\ The plot is generated at the end of the preparation so if the search is stopped by the treshold it won't be generated.")
+    parser.add_argument("--detector-threshold", default=0.5, type=float, help="Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source. Only applied to injections because the merger time is needed for the antenna response.")
+    parser.add_argument("--plot-antenna-pattern", default=None, action="store_true", help="If true, will generate an antenna pattern plot for the source location and the injection merger time. Only applied to injections because the merger time is needed for the antenna response. /!\\ The plot is generated at the end of the preparation so if the search is stopped by the threshold it won't be generated.")
     args = parser.parse_args()
 
     config_path = os.path.abspath(args.config)
@@ -66,8 +66,8 @@ def main():
             cmd_args += " --injection"
         if args.template_bank and sub_name == "prep.sub": # add the --template-bank flag to the command if the user specified it to both prep and post
             cmd_args += f" --template-bank {args.template_bank}"
-        if args.detector_treshold and sub_name == "prep.sub": # add the --detector-treshold flag to the command if the user specified it to both prep and post
-            cmd_args += f" --detector-treshold {args.detector_treshold}"
+        if args.detector_threshold and sub_name == "prep.sub": # add the --detector-threshold flag to the command if the user specified it to both prep and post
+            cmd_args += f" --detector-threshold {args.detector_threshold}"
         if args.plot_antenna_pattern and sub_name == "prep.sub": # add the --plot-antenna-pattern flag to the command if the user specified it to both prep and post
             cmd_args += f" --plot-antenna-pattern"
         if args.expected_trigger_time and sub_name == "post.sub": # only add the --expected-trigger-time flag to the post script, since it's the one that will generate the final trigger distribution plot

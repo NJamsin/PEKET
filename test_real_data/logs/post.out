@@ -1,22 +1,22 @@
-Scanning 30 files in /home/stu_jamsin/master_package/test_real_data/out...
+Scanning 30 files in /home/stu_jamsin/peket/test_real_data/out...
 
-Collected 290 candidate triggers.
+Collected 300 candidate triggers.
 Ranking Statistic used: reweighted_snr
 
 --- Top 5 Candidate Signals ---
-1. Rank Stat: 23.5968 | Coherent SNR: 30.3779 | Time: 1187008882.4287 | File: test_runtriggers_bank1_1187008379-1187010126.hdf
-2. Rank Stat: 22.9578 | Coherent SNR: 30.3130 | Time: 1187008882.4285 | File: test_runtriggers_bank1_1187008379-1187009379.hdf
-3. Rank Stat: 17.1425 | Coherent SNR: 28.7760 | Time: 1187008882.4292 | File: test_runtriggers_bank1_1187008379-1187010126.hdf
-4. Rank Stat: 17.0084 | Coherent SNR: 28.7597 | Time: 1187008882.4290 | File: test_runtriggers_bank1_1187008379-1187009379.hdf
-5. Rank Stat: 15.7879 | Coherent SNR: 28.6877 | Time: 1187008882.4282 | File: test_runtriggers_bank1_1187008379-1187010126.hdf
+1. Rank Stat: 22.4455 | Coherent SNR: 29.7666 | Time: 1187008882.4282 | File: test_runtriggers_bank1_1187008472-1187008913.hdf
+2. Rank Stat: 21.2929 | Coherent SNR: 29.3662 | Time: 1187008882.4287 | File: test_runtriggers_bank1_1187008472-1187008913.hdf
+3. Rank Stat: 13.4524 | Coherent SNR: 26.9911 | Time: 1187008882.4277 | File: test_runtriggers_bank1_1187008472-1187008913.hdf
+4. Rank Stat: 12.6529 | Coherent SNR: 26.1497 | Time: 1187008882.4292 | File: test_runtriggers_bank2_1187008472-1187008913.hdf
+5. Rank Stat: 8.9952 | Coherent SNR: 22.1163 | Time: 1187008882.4277 | File: test_runtriggers_bank1_1187008472-1187008913.hdf
 
 Generating plot for trigger distribution
 Best Candidate Time: 1187008882.43 (GPS)
 
 Generating spectrogram for the best candidate
-Reading data from cache: /home/stu_jamsin/master_package/test_real_data/data/test_run_H1.lcf...
+Reading data from cache: /home/stu_jamsin/peket/test_real_data/data/test_run_H1.lcf...
 Saved spectrogram for H1 as 'test_run_H1_best_candidate_spectrogram.png'
-Reading data from cache: /home/stu_jamsin/master_package/test_real_data/data/test_run_L1.lcf...
+Reading data from cache: /home/stu_jamsin/peket/test_real_data/data/test_run_L1.lcf...
 Saved spectrogram for L1 as 'test_run_L1_best_candidate_spectrogram.png'
 
 

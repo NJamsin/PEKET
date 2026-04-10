@@ -1,0 +1,16 @@
+
+getenv = True
+initialdir = /home/stu_jamsin/peket/example_file/ts-loop
+
+executable = /home/stu_jamsin/.conda/envs/fiesta/bin/kn-ts-loop
+arguments = --idx $(Process) --grid-dir /home/stu_jamsin/peket/example_file/ts-loop/bu19 --model Bu2019lm --svd-path /home/stu_jamsin/jamsin/NMMA/svdmodels --prior-file /home/stu_jamsin/peket/example_file/ts-loop/prior/bu19.prior --minus-pts 8 --nlive 512 --resampling --EM-prior /home/stu_jamsin/peket/example_file/ts-loop/prior/bu19_GW.prior
+
+output = logs/bu19_$(Process).out
+error = logs/bu19_$(Process).err
+log = logs/bu19_$(Process).log
+
+request_cpus = 1
+request_gpus = 0
+request_memory = 2GB
+
+queue 25

@@ -2,9 +2,9 @@ executable     = /home/stu_jamsin/.conda/envs/fiesta/bin/gw-search-post
 arguments      = $(config) --injection --plot-spectrogram --spectrogram-range 0,15
 universe       = vanilla
 
-output         = /home/stu_jamsin/master_package/test_injection/logs/post.out
-error          = /home/stu_jamsin/master_package/test_injection/logs/post.err
-log            = /home/stu_jamsin/master_package/test_injection/logs/pipeline.log
+output         = /home/stu_jamsin/peket/test_injection/logs/post.out
+error          = /home/stu_jamsin/peket/test_injection/logs/post.err
+log            = /home/stu_jamsin/peket/test_injection/logs/pipeline.log
 
 environment    = "PYTHONUNBUFFERED=1"
 

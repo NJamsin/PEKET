@@ -1,4 +1,0 @@
-# Define the node
-JOB POST /home/stu_jamsin/master_package/test_injection/sub_files/post.sub
-# Pass the config file path into the post job dynamically
-VARS POST config="/home/stu_jamsin/master_package/example_file/injection/example_injection.yaml"
