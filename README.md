@@ -1,6 +1,8 @@
 # PEKET
 ``peket``: **P**yCBC **E**xtension for **K**ilonova **E**mission **T**argeting
 
+![logo](logo.png)
+
 **NOTE**: ``peket`` is still under development. A basic documentation is available below in the markdown. Feel free to contact me for any questions.
 
 ## Add-on Package for PyCBC and NMMA/FIESTA
@@ -188,3 +190,6 @@ The output (posteriors ``.dat`` files, config ``.yaml`` files, and ``.png`` corn
 ## Plotting utils
 ``peket.kn_side.utils`` includes a function, ``plot_param_evolution`` that generates summary plots for the complete analysis of a grid with ``kn-ts-loop``/``lightcurve-analysis``. 
 **NOTE**: A small tutorial on the combined use of ``kn-ts-loop``, ``kn-make-grid`` and ``plot_param_evolution`` is available in the [``ts-loop``](https://github.com/NJamsin/PEKET/tree/main/example_file/ts-loop) directory in the example files. It also contains example prior files for all supported models.
+***
+### Acknowledgements
+I would like to acknowledge the use of [Gemini](https://gemini.google.com/app) for fixing code errors and assisting with the logo design.
