@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--plot-antenna-pattern", default=None, action="store_true", help="If true, will generate an antenna pattern plot for the source location and the injection merger time. Only applied to injections because the merger time is needed for the antenna response. /!\\ The plot is generated at the end of the preparation so if the search is stopped by the threshold it won't be generated.")
     parser.add_argument("--OSW-sigma", default=1, choices=[1,2,3, "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
     parser.add_argument("--tmplt-sigma", default=1, choices=[1,2,3, "full"], help="Size of the the template bank to be used for template bank generation around the expected trigger time, in sigmas. Default is 1. /!\\ If you specify a custom template bank with --template-bank, this argument will be ignored.")
+    parser.add_argument("--disk", default="3GB", help="Amount of disk space to request for the prep job. Default is \'3GB\'.")
     # Signifiance related args
     parser.add_argument("--compute-significance", action="store_true", help="If true, runs a significance job after the search to estimate FAR and p-value.")
     parser.add_argument("--significance-method", default="offsource", choices=["offsource", "timeslides"], help="Method to use for background estimation.")
@@ -99,8 +100,10 @@ def main():
             mem = "1GB"
         elif sub_name == "prep.sub": # the prep step can be a bit more memory intensive because of the template bank generation, especially if the user specified a low detector threshold that leads to long time windows. 
             mem = "16GB"
+            disk = args.disk
         else:
             mem = "512MB"
+            disk = "100MB"
         
         if args.ldg_tag:
             ldg_line = f"accounting_group = {args.ldg_tag}\n"
@@ -119,6 +122,7 @@ environment    = "PYTHONUNBUFFERED=1"
 
 request_cpus   = 1
 request_memory = {mem}
+request_disk   = {disk}
 
 {ldg_line}
 
