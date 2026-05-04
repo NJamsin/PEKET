@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--plot-spectrogram", default=False, action="store_true", help="If true, will generate a spectrogram plot for the top trigger in the post-processing step. This can be useful for visually inspecting the trigger.")
     parser.add_argument("--spectrogram-range", default="0,15", help="vmin and vmax for the spectrogram plot. Only used if --plot-spectrogram is set.")
     parser.add_argument("--injection", default=False, action="store_true", help="If true, will indicate that the pipeline is running in injection mode. This can be used to adjust the post-processing behavior if needed (e.g., to look for the injected signal).")
-    parser.add_argument("--OSW-sigma", default=1, choices=[1,2,3, "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
+    parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -133,7 +133,15 @@ def main():
     KN_t0 = Time(KN_detection_date, format='isot', scale='utc').mjd
 
     # 2. Calculate 1 sigma interval (16th and 84th percentiles) of the timeshift samples
-    p16, p50, p84 = np.percentile(EM_samp['timeshift'], [15.865, 50, 84.135])
+    if args.OSW_sigma == "full":
+        p16 = np.min(EM_samp['timeshift'])
+        p84 = np.max(EM_samp['timeshift'])
+    elif args.OSW_sigma == '1':
+        p16, p84 = np.percentile(EM_samp['timeshift'], [15.865, 84.135])
+    elif args.OSW_sigma == '2':
+        p16, p84 = np.percentile(EM_samp['timeshift'], [2.275, 97.725])
+    elif args.OSW_sigma == '3':
+        p16, p84 = np.percentile(EM_samp['timeshift'], [0.135, 99.865])
 
     # 3. Define the search window around the median timeshift, extending to the 1sigma interval
     t_start = KN_t0 + p16

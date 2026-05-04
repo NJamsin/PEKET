@@ -226,8 +226,8 @@ def main():
     parser.add_argument("--template-bank", default=None, help="Path to the template bank file if you want to specify it instead of generating through the resampling posterior. This can be useful if you want to use a custom template bank or if you want to skip the template bank generation step for testing purposes.")
     parser.add_argument("--detector-threshold", default=0.5, type=float, help="Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source.")
     parser.add_argument("--plot-antenna-pattern", default=None, action="store_true", help="If true, will generate an antenna pattern plot for the source location and the injection merger time. Only applied to injections because the merger time is needed for the antenna response.")
-    parser.add_argument("--OSW-sigma", default=1, choices=[1,2,3, "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
-    parser.add_argument("--tmplt-sigma", default=1, choices=[1,2,3, "full"], help="Size of the the template bank to be used for template bank generation around the expected trigger time, in sigmas. Default is 1. /!\\ If you specify a custom template bank with --template-bank, this argument will be ignored.")
+    parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
+    parser.add_argument("--tmplt-sigma", default='1', choices=['1','2','3', "full"], help="Size of the the template bank to be used for template bank generation around the expected trigger time, in sigmas. Default is 1. /!\\ If you specify a custom template bank with --template-bank, this argument will be ignored.")
     args = parser.parse_args()
 
     # Dynamically find the Conda bin directory
@@ -285,17 +285,17 @@ def main():
                 low_m2 = np.min(m2)
                 high_m1 = np.max(m1)
                 high_m2 = np.max(m2)
-            elif args.tmplt_sigma == 1:
+            elif args.tmplt_sigma == '1':
                 low_m1 = np.percentile(m1, 15.865)
                 low_m2 = np.percentile(m2, 15.865)
                 high_m1 = np.percentile(m1, 84.135)
                 high_m2 = np.percentile(m2, 84.135)
-            elif args.tmplt_sigma == 2:
+            elif args.tmplt_sigma == '2':
                 low_m1 = np.percentile(m1, 2.275)
                 low_m2 = np.percentile(m2, 2.275)
                 high_m1 = np.percentile(m1, 97.725)
                 high_m2 = np.percentile(m2, 97.725)
-            elif args.tmplt_sigma == 3:
+            elif args.tmplt_sigma == '3':
                 low_m1 = np.percentile(m1, 0.135)
                 low_m2 = np.percentile(m2, 0.135)
                 high_m1 = np.percentile(m1, 99.865)
@@ -382,11 +382,11 @@ def main():
     if args.OSW_sigma == "full":
         p16 = np.min(EM_samp['timeshift'])
         p84 = np.max(EM_samp['timeshift'])
-    elif args.OSW_sigma == 1:
+    elif args.OSW_sigma == '1':
         p16, p84 = np.percentile(EM_samp['timeshift'], [15.865, 84.135])
-    elif args.OSW_sigma == 2:
+    elif args.OSW_sigma == '2':
         p16, p84 = np.percentile(EM_samp['timeshift'], [2.275, 97.725])
-    elif args.OSW_sigma == 3:
+    elif args.OSW_sigma == '3':
         p16, p84 = np.percentile(EM_samp['timeshift'], [0.135, 99.865])
 
     # 3. Define the search window around the median timeshift, extending to the 1sigma interval
