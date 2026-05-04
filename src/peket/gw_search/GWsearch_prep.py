@@ -228,6 +228,7 @@ def main():
     parser.add_argument("--plot-antenna-pattern", default=None, action="store_true", help="If true, will generate an antenna pattern plot for the source location and the injection merger time. Only applied to injections because the merger time is needed for the antenna response.")
     parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
     parser.add_argument("--tmplt-sigma", default='1', choices=['1','2','3', "full"], help="Size of the the template bank to be used for template bank generation around the expected trigger time, in sigmas. Default is 1. /!\\ If you specify a custom template bank with --template-bank, this argument will be ignored.")
+    parser.add_argument("--ldg-tag", default=None, help="The \"accounting_group\" tag required for submitting to the LDG cluster. If not specified, the pipeline will be generated without the tag.")
     args = parser.parse_args()
 
     # Dynamically find the Conda bin directory
@@ -559,6 +560,7 @@ def main():
     """
 
     # 2. Content for the HTCondor submit file
+    ldg_tag_line = f"accounting_group = {args.ldg_tag}" if args.ldg_tag else ""
     sub_content = f"""executable = {sh_filename}
     universe   = vanilla
 
@@ -574,6 +576,7 @@ def main():
     request_cpus   = 1
     request_memory = 4GB
     request_disk   = 1MB
+    {ldg_tag_line}
 
     # Queue a job for every line in the text file
     queue bank, start, end, tt from {WINDOW_FILE}

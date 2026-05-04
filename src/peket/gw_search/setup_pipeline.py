@@ -94,6 +94,8 @@ def main():
             cmd_args += f" --OSW-sigma {args.OSW_sigma}"
         if args.tmplt_sigma and sub_name == "prep.sub": # only add the --tmplt-sigma flag to the prep script, since it's the one that will generate the template bank
             cmd_args += f" --tmplt-sigma {args.tmplt_sigma}"
+        if args.ldg_tag and sub_name == "prep.sub": 
+            cmd_args += f" --ldg-tag {args.ldg_tag}"
         if sub_name == "significance.sub": # for the significance job, we also need to pass the config path as an argument to be able to read the SIG_WINDOW_FILE variable
             cmd_args += f" --method {args.significance_method}"
             cmd_args += f" --n-background {args.n_background}"
