@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import matplotlib
+matplotlib.use('Agg') # change backend to avoid display error
 import pandas as pd
 import numpy as np
 import os

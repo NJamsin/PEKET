@@ -25,10 +25,14 @@ def main():
     parser.add_argument("--template-bank", default=None, help="Path to the template bank file if you want to specify it instead of generating through the resampling posterior. This can be useful if you want to use a custom template bank or if you want to skip the template bank generation. The template bank will still be split for parrallelization. /!\\ Expect an hdf file.")
     parser.add_argument("--detector-threshold", default=0.5, type=float, help="Minimum antenna response required to launch the search. Default is 0.5, can be useful to avoid long search for time windows where the detectors are barely sensitive to the source. Only applied to injections because the merger time is needed for the antenna response.")
     parser.add_argument("--plot-antenna-pattern", default=None, action="store_true", help="If true, will generate an antenna pattern plot for the source location and the injection merger time. Only applied to injections because the merger time is needed for the antenna response. /!\\ The plot is generated at the end of the preparation so if the search is stopped by the threshold it won't be generated.")
+    parser.add_argument("--OSW-sigma", default=1, choices=[1,2,3, "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
+    parser.add_argument("--tmplt-sigma", default=1, choices=[1,2,3, "full"], help="Size of the the template bank to be used for template bank generation around the expected trigger time, in sigmas. Default is 1. /!\\ If you specify a custom template bank with --template-bank, this argument will be ignored.")
     # Signifiance related args
     parser.add_argument("--compute-significance", action="store_true", help="If true, runs a significance job after the search to estimate FAR and p-value.")
     parser.add_argument("--significance-method", default="offsource", choices=["offsource", "timeslides"], help="Method to use for background estimation.")
     parser.add_argument("--n-background", default=50, type=int, help="Number of background windows/slides to use.") 
+    # LDG tag
+    parser.add_argument("--ldg-tag", default=None, help="The \"accounting_group\" tag required for submitting to the LDG cluster. If not specified, the pipeline will be generated without the tag.")
 
     args = parser.parse_args()
 
@@ -85,6 +89,10 @@ def main():
             cmd_args += f" --expected-trigger-time {args.expected_trigger_time}"
         if args.plot_spectrogram and sub_name == "post.sub": # only add the --plot-spectrogram flag to the post script, since it's the one that will generate the spectrogram plots
             cmd_args += f" --plot-spectrogram --spectrogram-range {args.spectrogram_range}"
+        if args.OSW_sigma: # only add the --OSW-sigma flag tto both prep and post
+            cmd_args += f" --OSW-sigma {args.OSW_sigma}"
+        if args.tmplt_sigma and sub_name == "prep.sub": # only add the --tmplt-sigma flag to the prep script, since it's the one that will generate the template bank
+            cmd_args += f" --tmplt-sigma {args.tmplt_sigma}"
         if sub_name == "significance.sub": # for the significance job, we also need to pass the config path as an argument to be able to read the SIG_WINDOW_FILE variable
             cmd_args += f" --method {args.significance_method}"
             cmd_args += f" --n-background {args.n_background}"
@@ -93,6 +101,11 @@ def main():
             mem = "16GB"
         else:
             mem = "512MB"
+        
+        if args.ldg_tag:
+            ldg_line = f"accounting_group = {args.ldg_tag}\n"
+        else:            
+            ldg_line = ""
 
         content = f"""executable     = {cmd_path}
 arguments      = {cmd_args}
@@ -106,6 +119,8 @@ environment    = "PYTHONUNBUFFERED=1"
 
 request_cpus   = 1
 request_memory = {mem}
+
+{ldg_line}
 
 queue
 """

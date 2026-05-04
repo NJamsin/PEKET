@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--plot-spectrogram", default=False, action="store_true", help="If true, will generate a spectrogram plot for the top trigger in the post-processing step. This can be useful for visually inspecting the trigger.")
     parser.add_argument("--spectrogram-range", default="0,15", help="vmin and vmax for the spectrogram plot. Only used if --plot-spectrogram is set.")
     parser.add_argument("--injection", default=False, action="store_true", help="If true, will indicate that the pipeline is running in injection mode. This can be used to adjust the post-processing behavior if needed (e.g., to look for the injected signal).")
+    parser.add_argument("--OSW-sigma", default=1, choices=[1,2,3, "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
