@@ -347,6 +347,10 @@ def main():
     col = cmap(np.linspace(0,1,NUM_SPLITS))
     fig, ax = plt.subplots(figsize=(10, 6))
     for i in range(NUM_SPLITS):
+        b_file = f"{OUT_SPLIT}/split_bank_{i}.hdf"
+        if not os.path.exists(b_file):
+            print(f"Warning: Expected split bank file '{b_file}' not found. Skipping this bank for plotting.")
+            continue
         bank = h5py.File(f"{OUT_SPLIT}/split_bank_{i}.hdf", 'r')
         # Plot the template bank masses
         m1 = bank['mass1'][:]
