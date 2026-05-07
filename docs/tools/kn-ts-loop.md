@@ -15,7 +15,7 @@ Performs iterative inference on synthetic or real kilonova lightcurve data by pr
 * `--true-merger-time`: True merger time for timeshift calculation in ISOT format.
 * `--nlive`: Number of live points for nested sampling (default: 1024).
 * `--resampling`: Runs the resampling step via `gwem-resampling` after EM inferences.
-* `--eos-posterior`: Path to EOS posterior probability file for GW samples.
+* `--eos-posterior`: Path to EOS posterior probability file for GW samples. It is recommended to use [this one](https://github.com/nuclear-multimessenger-astronomy/nmma/blob/main/example_files/tools/gwem_resampling/posterior_probability.txt).
 * `--eos-path`: Path to EOS files used for resampling.
 * `--GW-prior`: Path to GW prior file for resampling.
 * `--EM-prior`: Path to EM prior file for resampling.
@@ -33,5 +33,7 @@ kn-ts-loop --idx 0 \
            --minus-pts 2 \
            --add-ul \
            --resampling
+           --eos-path /path/to/eos.dat \
+           --eos-posterior /path/to/posterior.txt \
 ```
 The output will be systematically organized inside your grid directory under `{grid_dir}/{idx}/minusX/`.

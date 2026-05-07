@@ -8,14 +8,14 @@ import sys
 
 '''
 Python script to show how to use kn-ts-loop on a cluster with condor.
-Note: Only kept the bu19 grid for the example, also works with other grids named in the same way (bu26_opt, ka17_opt).
+Note: Only kept the bu26 grid for the example, also works with other grids named in the same way (bu26_opt, ka17_opt).
 Provides example .prior file for the three models.
 '''
 
 # REMARK: as the output of the ts loop for a full grid is quite large, I did not upload the grid.
-# To run this script, you first need to create the grid with kn-ts-loop, the command below was the one I used to create the bu19 grid 
+# To run this script, you first need to create the grid with kn-ts-loop, the command below was the one I used to create the bu26 grid 
 '''
-kn-make-grid --out-dir peket/example_file/ts-loop/bu19 --model Bu2019lm --filters ps1::r ps1::g ps1::z ps1::i ps1::y --cadence 4 --delay 0.25 --obs-duration 10 --detection-limit ps1::r=26 ps1::g=26 ps1::z=26 ps1::i=26 ps1::y=26 --eos-path peket/example_file/KN_grid/eos.dat --noise-level 0
+kn-make-grid --out-dir peket/example_file/ts-loop/bu26 --model Bu2026_MLP --filters ps1::r ps1::g ps1::z ps1::i ps1::y --cadence 4 --delay 0.25 --obs-duration 10 --detection-limit ps1::r=26 ps1::g=26 ps1::z=26 ps1::i=26 ps1::y=26 --eos-path peket/example_file/KN_grid/eos.dat --noise-level 0
 '''
 
 # AFTER CREATING THE GRID, YOU CAN RUN THIS SCRIPT TO APPLY THE TS LOOP ON THE GRID
@@ -34,14 +34,14 @@ bin_dir = os.path.dirname(sys.executable)
 exe_path = os.path.join(bin_dir, "kn-ts-loop")
 
 # create a .submit file to apply ts loop on each lc of each grid
-def create_submit_file(grid_dir, model, prior, minus_pts, em_prior, out_dir):
+def create_submit_file(grid_dir, model, prior, minus_pts, em_prior, out_dir, svd_path, eos_path, eos_post):
     abs_grid_dir = os.path.join(BASE_DIR, grid_dir)
     file = f"""
 getenv = True
 initialdir = {BASE_DIR}
 
 executable = {exe_path}
-arguments = --idx $(Process) --grid-dir {abs_grid_dir} --model {model} --svd-path /home/stu_jamsin/jamsin/NMMA/svdmodels --prior-file {prior} --minus-pts {minus_pts} --nlive 512 --resampling --EM-prior {em_prior}
+arguments = --idx $(Process) --grid-dir {abs_grid_dir} --model {model} --svd-path {svd_path} --eos-path {eos_path} --eos-posterior {eos_post} --prior-file {prior} --minus-pts {minus_pts} --nlive 512 --resampling --EM-prior {em_prior}
 
 output = logs/{grid_dir}_$(Process).out
 error = logs/{grid_dir}_$(Process).err
@@ -79,7 +79,10 @@ for grid in grids:
     prior = f"{BASE_DIR}/prior/{model0}.prior"
     em_prior = f"{BASE_DIR}/prior/{model0}_GW.prior"
     out_dir = f"{BASE_DIR}/sub_files"
+    svd_path = f"/path/to/svd/"
+    eos_path = f"/path/to/eos.dat"
+    eos_post = f"/path/to/posterior.txt"
     # create submit file
-    create_submit_file(grid_name, model, prior, 8, em_prior, out_dir)
+    create_submit_file(grid_name, model, prior, 8, em_prior, out_dir, svd_path, eos_path, eos_post)
     # submit the file
     subprocess.run(f"condor_submit {out_dir}/{grid_name}_ts_loop.submit", shell=True)

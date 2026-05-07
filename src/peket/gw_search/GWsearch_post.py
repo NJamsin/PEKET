@@ -5,6 +5,7 @@ import glob
 import os
 import yaml
 import h5py
+import sys
 import matplotlib.pyplot as plt
 import pandas as pd
 from astropy.time import Time

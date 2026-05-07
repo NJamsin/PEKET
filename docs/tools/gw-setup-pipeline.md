@@ -39,16 +39,23 @@ Injection: # Only read if --injection is passed.
 ```
 
 ## Optional Arguments
+### Execution & Monitoring:
 - ``--submit``: Automatically submit the pipeline to HTCondor after generation.
+- ``--skip-search``: Skips the search step and runs post-processing (requires existing triggers).
+- ``--monitor``: If true, will monitor the pipeline execution. (ignored if ``--skip-search`` is used).
+- ``--ldg-tag``: The ``accounting_group`` tag required for submitting to IGWN/LDG clusters (e.g., ``ligo.sim.o3.cbc.bns.pycbcoffline``).
+### Search & Template Parameters:
+- ``--OSW-sigma``: Size of the On-Source Window around the expected trigger time, in sigmas (Choices: ``1``, ``2``, ``3``, ``full``. Default: ``1``)
+- ``--tmplt-sigma``: Size of the posterior bounds used for template bank generation, in sigmas (Choices: ``1``, ``2``, ``3``, ``full``. Default: ``1``)
+- ``--template-bank``: Path to the template bank file if you want to specify it instead of generating through the resampling posterior.
+- ``--detector-threshold``: Minimum antenna response to launch the search (default: ``0.5``). Only applied to injections.
+- ``--disk``: Amount of disk space to request for the prep job (default: ``3GB``)
+### Injection & Plotting:
 - ``--injection``: Injects a fake signal based on the 'Injection' section of the config.
 - ``--expected-trigger-time``: Expected trigger time in gps format. Used in final plots.
-- ``--skip-search``: Skips the search step and runs post-processing (requires existing triggers).
 - ``--plot-spectrogram``: Generates a spectrogram plot for the top trigger.
   - ``--spectrogram-range``: vmin and vmax for the spectrogram plot. Only used if ``--plot-spectrogram`` is set, default values are ``vmin=0, vmax=15``.
-- ``--detector-threshold``: Minimum antenna response to launch the search (default: 0.5). Only applied to injections.
 - ``--plot-antenna-pattern``: Generates an antenna pattern plot for the source location (injections only).
-- ``--template-bank``: Path to the template bank file if you want to specify it instead of generating through the resampling posterior.
-- ``--monitor``: If true, will monitor the pipeline execution. (ignored if ``--skip-search`` is used).
 
 ### Known Issues
-It is possible that an OOM (Out Of Memory) error kills the search jobs despite the 4GB of RAM requested for each job. Rerunning the command usually solves the problem.
+It is possible that an OOM (Out Of Memory) error kills the search jobs despite the 4GB of RAM requested for each job. Rerunning the command usually solves the problem. The DAG is configured to retry failed search jobs up to 3 times automatically (`RETRY SEARCH 3`).
