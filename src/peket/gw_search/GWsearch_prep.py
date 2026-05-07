@@ -582,6 +582,13 @@ def main():
     request_disk   = 1MB
     {ldg_tag_line}
 
+    # Cluster overflow protection 
+    max_materialize = 9000
+    max_idle = 2000
+
+    # hang protection
+    periodic_remove = (JobStatus == 2) && (CurrentTime - EnteredCurrentStatus > 14400)
+
     # Queue a job for every line in the text file
     queue bank, start, end, tt from {WINDOW_FILE}
     """

@@ -181,6 +181,8 @@ JOB SEARCH {split_search_sub}
 JOB POST {os.path.join(base_dir, "sub_files", "post.sub")}
 {sig_dag_lines}
 
+RETRY SEARCH 3
+
 # Pass the config file path into the prep and post jobs dynamically
 VARS PREP config="{config_path}"
 VARS POST config="{config_path}"

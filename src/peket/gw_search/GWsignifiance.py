@@ -25,6 +25,8 @@ from astropy.time import Time
 import urllib.request
 from peket.gw_search.GWsearch_prep import robust_get_urls, preparer_donnees
 
+from nmma.nmma.post_processing import parser
+
 def plot_timeline(top_time, on_window, n_slides, slide_win_1, slide_win_2, plot_path):
     """
     Generate a timeline plot showing the on-source window, off-source windows, and time slides relative to the top trigger time.
@@ -161,7 +163,7 @@ def compute_far_pvalue(top_stat, bg_stats, T_bg, T_onsource):
     p_value = 1.0 - np.exp(-far * T_onsource)
     return far, p_value, n_louder
 
-def generate_timeslides_file(on_source_start, on_source_end, max_size, n_slides, sig_window_file, num_banks, overlap, negative_slide=False):
+def generate_timeslides_file(on_source_start, on_source_end, max_size, n_slides, sig_window_file, num_banks, overlap, negative_slide=False, delay=0):
     """Generate the parameter file with 2 off-source windows per slide."""
     with open(sig_window_file, 'w') as f:
         for slide in range(1, n_slides + 1):
@@ -172,9 +174,9 @@ def generate_timeslides_file(on_source_start, on_source_end, max_size, n_slides,
                     tt = (current_start + current_end) // 2 #for the antenna pattern
                     # Write: BANK_NUM START_TIME END_TIME
                     if negative_slide:
-                        f.write(f"{-slide} {bank} {current_start} {current_end} {tt}\n")
+                        f.write(f"{-(slide + delay)} {bank} {current_start} {current_end} {tt}\n")
                     else:
-                        f.write(f"{slide} {bank} {current_start} {current_end} {tt}\n")
+                        f.write(f"{slide + delay} {bank} {current_start} {current_end} {tt}\n")
                     if current_end == on_source_end:
                         break
                 
@@ -184,8 +186,10 @@ def generate_timeslides_file(on_source_start, on_source_end, max_size, n_slides,
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 
-def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, suffix):
+def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
     """
     Generate a plot of False Alarm Rate (FAR) vs Ranking Statistic (SNR) for the background triggers,
     and indicate the position of the top trigger with its corresponding FAR.
@@ -193,7 +197,7 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, suffix):
      - top_stat: SNR of the top trigger
      - T_bg: Total background time analyzed (in seconds)
      - plot_path: path to save the generated plot
-     - suffix: string to include in the plot title (e.g., run name)
+     - T_onsource: Total time of the on-source analysis (in seconds)
      Note: The FAR is computed as (1 + N_louder) / T_bg, where N_louder is the number of background triggers with SNR >= top_stat. The plot will show the distribution of background FAR as a function of SNR, and the top trigger will be highlighted with its FAR. If the top trigger is louder than all background triggers, it will be shown as a point with an upper limit on the FAR (e.g., "< 1/T_bg").
     """
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -213,9 +217,8 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, suffix):
         far_bg_yr = (cum_counts / T_bg) * 3.156e7
 
         # plot the distribution of background FAR vs SNR
-        ax.semilogy(sorted_bg, far_bg_yr, color='dimgray', linewidth=2, alpha=0.8, 
-                    label='Expected Background')
-        
+        ax.semilogy(sorted_bg, far_bg_yr, color='dimgray', linewidth=2, alpha=0.8)
+        bg_patch = mpatches.Patch(color='gray', alpha=0.7, label='Empirical Background')
         # stylizing the plot
         ax.fill_between(sorted_bg, far_bg_yr, 1e-5, color='silver', alpha=0.3)
 
@@ -224,6 +227,7 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, suffix):
     
     top_far = (1 + n_louder) / T_bg if T_bg > 0 else np.inf
     top_far_yr = top_far * 3.156e7
+    top_fap = 1.0 - np.exp(-top_far * T_onsource) if top_far < np.inf else 1.0
 
     # If louder than all background triggers, we show it as an upper limit (e.g., "< 1/T_bg") on the plot
     is_limit = (n_louder == 0)
@@ -232,6 +236,10 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, suffix):
     # best candidate point
     ax.scatter([top_stat], [top_far_yr], color='red', s=60, zorder=5, 
                label=f'Top Trigger (FAR {prefix}{top_far_yr:.2e} /yr)')
+    trigger_handle = mlines.Line2D([], [], color='red', marker='o', linestyle='None', 
+                               markersize=8, label='Top Trigger')
+    stats_handle = mlines.Line2D([], [], color='none', marker='None', linestyle='None', 
+                             label=f'FAR {prefix}{top_far_yr:.2e} /yr\nFAP: {top_fap:.2e}')
 
     # "upper limit" arrow if the top trigger is louder than all background triggers
     if is_limit:
@@ -239,16 +247,16 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, suffix):
                     arrowprops=dict(arrowstyle="->", color='red', lw=1.5), zorder=5)
 
     # Plot styling
-    ax.set_xlabel('Ranking Statistic (Coherent SNR)', fontsize=12)
+    ax.set_xlabel('Ranking Statistic (reweighted SNR)', fontsize=12)
     ax.set_ylabel('False Alarm Rate (1/yr)', fontsize=12)
-    ax.set_title(f'{suffix} - Background FAR vs Ranking Statistic', fontsize=14)
+    ax.set_title(f'Background FAR vs Ranking Statistic', fontsize=14)
     
     if len(valid_bg) > 0 and T_bg > 0:
         ax.set_ylim(bottom=max(1e-5, 0.1 / (T_bg / 3.156e7)), top=max(far_bg_yr) * 2)
 
     ax.grid(True, which="major", ls="-", alpha=0.5)
     ax.grid(True, which="minor", ls=":", alpha=0.3)
-    ax.legend(fontsize=11)
+    ax.legend(handles=[bg_patch, trigger_handle, stats_handle], loc='upper right', numpoints=1)
     
     plt.tight_layout()
     plt.savefig(plot_path, dpi=300)
@@ -264,6 +272,11 @@ def main():
     parser.add_argument("--monitor", action="store_true", help="Monitor the background jobs.")
     parser.add_argument("--window", default='both', choices=['both', 'before', 'after'], help="Which off-source window(s) to use for background estimation.")
     parser.add_argument("--minimal-log", default=None, action="store_true", help="Reduce logging output to essentials only.")
+    parser.add_argument("--max-timeslides", default=4096, type=int, help="Maximum number of slides, corresponds to the additional data duration to be downloaded/prepared (in seconds). Default is 4096s, if window is both, it will be 4096s for each window (total 8192s).")
+    parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
+    parser.add_argument("--ldg-tag", default=None, help="The \"accounting_group\" tag required for submitting to the LDG cluster. If not specified, the pipeline will be generated without the tag.")
+    parser.add_argument("--delay", default=0, type=int, help="Delay in seconds/timeslides between the limits of the OSW and the start/end of the off-source windows. Useful to break down the background estimation into multiple runs, eg, 200 timeslides delay 0 and timeslides 200 delay 200 to have 400 timeslides in total but split into 2 runs of 200 slides (to avoid too many condor jobs at once).")
+
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -283,7 +296,14 @@ def main():
     # Recompute on-source window
     EM_samp    = pd.read_csv(KN_EM_post, delimiter=' ', dtype=np.float32)
     KN_t0      = Time(KN_date, format='isot', scale='utc').mjd
-    p16, _, p84 = np.percentile(EM_samp['timeshift'], [15.865, 50, 84.135])
+    if args.OSW_sigma == "full":
+        p16, p84 = EM_samp['timeshift'].min(), EM_samp['timeshift'].max() 
+    elif args.OSW_sigma == "1":
+        p16, _, p84 = np.percentile(EM_samp['timeshift'], [15.865, 50, 84.135])
+    elif args.OSW_sigma == "2":
+        p16, _, p84 = np.percentile(EM_samp['timeshift'], [2.275, 50, 97.725])
+    elif args.OSW_sigma == "3":
+        p16, _, p84 = np.percentile(EM_samp['timeshift'], [0.135, 50, 99.865])
     time_gps   = Time((KN_t0 + p16, KN_t0 + p84), format='mjd').gps
     
     print("On-source window (GPS):", int(time_gps[0]), "-", int(time_gps[1]))
@@ -298,11 +318,14 @@ def main():
     OFF1_END   = ON_START -16
     OFF2_START = ON_END +16
     OFF2_END   = ON_END + OFF_DUR + 16 
-    DATA_OFF1_START = OFF1_START - 4096
+    add_dur = args.max_timeslides
+    if add_dur < args.n_slides:
+        print(f"Warning: max_timeslides ({add_dur}s) is less than n_slides ({args.n_slides}). This may lead to insufficient background data for the number of slides requested. Consider increasing max_timeslides or reducing n_slides.")
+    DATA_OFF1_START = OFF1_START - add_dur
     DATA_OFF1_END   = OFF1_END
     DATA_OFF2_START = OFF2_START 
-    DATA_OFF2_END   = OFF2_END + 4096
-    print(f"Off-source windows (GPS):\n  Window 1: {OFF1_START+4096} - {OFF1_END}\n  Window 2: {OFF2_START} - {OFF2_END}")
+    DATA_OFF2_END   = OFF2_END + add_dur
+    print(f"Off-source windows (GPS):\n  Window 1: {OFF1_START+add_dur} - {OFF1_END}\n  Window 2: {OFF2_START} - {OFF2_END}")
 
     BG_SUFFIX = f"{SUFFIX}_background"
     DATA_DIR    = os.path.join(BASE_DIR, 'data')
@@ -402,6 +425,7 @@ def main():
                     fout.write(fin.read())
         print(f"  Merged time slides file created: {merged_window_file}")
 
+    '''
     timeline_plot_path = os.path.join(PLOT_DIR, f'{SUFFIX}_timeline.png')
     print("\nGenerating timeline plot...")
     on_window = (ON_START, ON_END)
@@ -411,6 +435,7 @@ def main():
     slide_win_1 = (OFF1_START, OFF1_END)
     slide_win_2 = (OFF2_START, OFF2_END)
     plot_timeline(top_time, on_window, args.n_slides, slide_win_1, slide_win_2, timeline_plot_path)
+    '''
     #print("DEBUG/ early stopping after generating time slides file.")
     #return 0
     if args.run_background:
@@ -510,9 +535,19 @@ queue slide, bank, start, end, tt from {window_file}
         print(f"  HTCondor files generated: {sh_bg}\n\t\t\t\t{sub_bg}")
         
         if args.submit:
-            result = subprocess.run(["condor_submit", sub_bg], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            print(result.stdout, end='')
-            if result.stderr: print(result.stderr, end='')
+            import subprocess
+            try:
+                result = subprocess.run(["condor_submit", sub_bg], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                print(result.stdout, end='')
+                if result.stderr: print(result.stderr, end='')
+            except subprocess.CalledProcessError as e:
+                print("\n" + "!"*65)
+                print(" Critical error from condor_submit")
+                print("!"*65)
+                print(f" Sub file : {sub_bg}")
+                print(f"\n --- Condor error --- \n{e.stderr}")
+                print("!"*60 + "\n")
+                return 1 
 
             cluster_id = None
             for line in result.stdout.splitlines():
@@ -600,7 +635,7 @@ queue slide, bank, start, end, tt from {window_file}
 
     plot_far_path = os.path.join(PLOT_DIR, f'{SUFFIX}_far_vs_snr.png')
     print("\nGenerating FAR vs SNR plot...")
-    plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_far_path, SUFFIX)
+    plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_far_path, WIN_DUR)
 
     print("Significance estimation complete.")
     return 0
