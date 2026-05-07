@@ -584,7 +584,6 @@ def main():
 
     # Cluster overflow protection 
     max_materialize = 9000
-    max_idle = 2000
 
     # hang protection
     periodic_remove = (JobStatus == 2) && (CurrentTime - EnteredCurrentStatus > 14400)
