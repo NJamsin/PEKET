@@ -97,7 +97,8 @@ JOB SIG_PREP {os.path.join(sub_files_dir, "sig_prep.sub")}
 JOB SIG_SEARCH {sig_search_sub}
 JOB SIG_POST {os.path.join(sub_files_dir, "sig_post.sub")}
 
-RETRY SEARCH 3 # Retry the search node up to 3 times if it fails, as it can be the most resource-intensive part
+# Retry the search node up to 3 times if it fails, as it can be the most resource-intensive part
+RETRY SEARCH 3 
 
 # Pass the config file path dynamically
 VARS SIG_PREP config="{config_path}"
