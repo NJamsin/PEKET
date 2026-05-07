@@ -7,6 +7,10 @@ import yaml
 import subprocess 
 import time
 import glob
+import pandas as pd
+import numpy as np
+from astropy.time import Time
+import math
 
 def main():
     parser = argparse.ArgumentParser(description="Generate HTCondor DAG for PyCBC Significance Estimation.")
@@ -26,6 +30,7 @@ def main():
     parser.add_argument("--max-timeslides", default=4096, type=int, help="Maximum number of slides data duration.")
     parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Search window sigma size.")
     parser.add_argument("--ldg-tag", default=None, help="The accounting_group tag required for IGWN.")
+    parser.add_argument("--chunk-size", default=3000, type=int, help="Number of jobs per chunk to bypass Schedd limits")
 
     args = parser.parse_args()
 
@@ -53,7 +58,7 @@ def main():
         cmd_args = "$(config)"
         
         if sub_name == "sig_prep.sub":
-            cmd_args += f" --n-slides {args.n_slides} --window {args.window} --delay {args.delay} --max-timeslides {args.max_timeslides} --OSW-sigma {args.OSW_sigma}"
+            cmd_args += f" --n-slides {args.n_slides} --window {args.window} --delay {args.delay} --max-timeslides {args.max_timeslides} --OSW-sigma {args.OSW_sigma} --chunk-size {args.chunk_size}"
             if args.ldg_tag: cmd_args += f" --ldg-tag {args.ldg_tag}"
             mem = "2GB"
             disk = "2GB"
@@ -92,21 +97,73 @@ queue
     dag_path = os.path.join(sub_files_dir, "significance.dag")
     sig_search_sub = os.path.join(sub_files_dir, "sig_search.sub") 
     
+# --- MATH BLOCK FOR EXACT CHUNKING ---
+    try:
+        EM_samp = pd.read_csv(config['KN_data']['EM_post_file'], delimiter=' ', dtype=np.float32)
+        KN_t0 = Time(config['KN_data']['first_detection'], format='isot', scale='utc').mjd
+        
+        if args.OSW_sigma == "full":
+            p16, p84 = EM_samp['timeshift'].min(), EM_samp['timeshift'].max() 
+        elif args.OSW_sigma == "1":
+            p16, _, p84 = np.percentile(EM_samp['timeshift'], [15.865, 50, 84.135])
+        elif args.OSW_sigma == "2":
+            p16, p84 = np.percentile(EM_samp['timeshift'], [2.275, 97.725])
+        elif args.OSW_sigma == "3":
+            p16, p84 = np.percentile(EM_samp['timeshift'], [0.135, 99.865])
+            
+        time_gps = Time((KN_t0 + p16, KN_t0 + p84), format='mjd').gps
+        ON_START, ON_END = int(time_gps[0]), int(time_gps[1])
+        OFF_DUR = ON_END - ON_START
+        
+        OFF1_START, OFF1_END = ON_START - OFF_DUR - 16, ON_START - 16
+        OFF2_START, OFF2_END = ON_END + 16, ON_END + OFF_DUR + 16
+        
+        def count_windows(start, end, max_size, overlap):
+            count = 0; current = start
+            while current < end:
+                c_end = min(current + max_size, end)
+                count += 1
+                if c_end == end: break
+                current = c_end - overlap
+            return count
+
+        w1 = count_windows(OFF1_START, OFF1_END, 1000, 16)
+        w2 = count_windows(OFF2_START, OFF2_END, 1000, 16)
+        
+        num_banks = config['GW_search']['num_splits']
+        total_jobs = 0
+        if args.window in ['both', 'before']: total_jobs += w1 * args.n_slides * num_banks
+        if args.window in ['both', 'after']: total_jobs += w2 * args.n_slides * num_banks
+        
+        num_chunks = max(1, math.ceil(total_jobs / args.chunk_size))
+    except Exception as e:
+        print(f"Warning: Could not pre-calculate jobs, defaulting to 1 chunk. Error: {e}")
+        num_chunks = 1
+    # -------------------------------------
+
+    search_nodes = ""
+    retry_lines = ""
+    parents_search = ""
+    for i in range(num_chunks):
+        chunk_sub = os.path.join(sub_files_dir, f"sig_search_chunk_{i}.sub")
+        search_nodes += f"JOB SIG_SEARCH_{i} {chunk_sub}\n"
+        retry_lines += f"RETRY SIG_SEARCH_{i} 3\n"
+        parents_search += f"SIG_SEARCH_{i} "
+
     dag_content = f"""# Define the nodes for Significance Estimation
 JOB SIG_PREP {os.path.join(sub_files_dir, "sig_prep.sub")}
-JOB SIG_SEARCH {sig_search_sub}
+{search_nodes}
 JOB SIG_POST {os.path.join(sub_files_dir, "sig_post.sub")}
 
-# Retry the search node up to 3 times if it fails, as it can be the most resource-intensive part
-RETRY SIG_SEARCH 3 
+{retry_lines}
 
 # Pass the config file path dynamically
 VARS SIG_PREP config="{config_path}"
 VARS SIG_POST config="{config_path}"
 
 # Define the workflow dependencies
-PARENT SIG_PREP CHILD SIG_SEARCH
-PARENT SIG_SEARCH CHILD SIG_POST
+PARENT SIG_PREP CHILD {parents_search}
+PARENT {parents_search} CHILD SIG_POST
 """
     with open(dag_path, "w") as f:
         f.write(dag_content)

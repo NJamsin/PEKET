@@ -56,6 +56,7 @@ def main():
     parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"])
     parser.add_argument("--delay", default=0, type=int)
     parser.add_argument("--ldg-tag", default=None, help="Tag accounting_group pour IGWN")
+    parser.add_argument("--chunk-size", default=3000, type=int)
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -245,7 +246,21 @@ mkdir -p {BG_OUT_DIR}/bank_${{BANK_NUM}}
     # add ldg tag line only if ldg_tag is provided
     ldg_tag_line = f"accounting_group = {args.ldg_tag}" if args.ldg_tag else ""
     
-    sub_content = f"""executable = {sh_bg}
+    import math
+    with open(window_file, 'r') as f:
+        lines = f.readlines()
+        
+    total_lines = len(lines)
+    num_chunks = max(1, math.ceil(total_lines / args.chunk_size))
+    
+    for i in range(num_chunks):
+        chunk_lines = lines[i * args.chunk_size : (i + 1) * args.chunk_size]
+        chunk_file = os.path.join(SIG_DIR, f'{SUFFIX}_sig_windows_chunk_{i}.txt')
+        with open(chunk_file, 'w') as f:
+            f.writelines(chunk_lines)
+            
+        chunk_sub = os.path.join(SUB_DIR, f'sig_search_chunk_{i}.sub')
+        sub_content = f"""executable = {sh_bg}
 universe   = vanilla
 arguments  = "$(slide) $(bank) $(start) $(end) $(tt)"
 output     = {LOG_DIR}/{SUFFIX}_sig_$(bank)_slide$(slide).out
@@ -255,14 +270,14 @@ request_cpus   = 1
 request_memory = 4GB
 request_disk   = 1MB
 {ldg_tag_line}
-
-# Cluster overflow protection 
-max_idle = 500 
 periodic_remove = (JobStatus == 2) && (CurrentTime - EnteredCurrentStatus > 14400)
-queue slide, bank, start, end, tt from {window_file}
+
+queue slide, bank, start, end, tt from {chunk_file}
 """
-    with open(sub_bg, 'w') as f: f.write(sub_content.strip() + "\n")
-    print(f"HTCondor files generated: {sh_bg} et {sub_bg}")
+        with open(chunk_sub, 'w') as f:
+            f.write(sub_content.strip() + "\n")
+            
+    print(f"Generated {num_chunks} chunk files of {args.chunk_size} jobs max for parallel submission.")
     print("Significance preparation complete!")
 
 if __name__ == '__main__':

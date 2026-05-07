@@ -229,6 +229,7 @@ def main():
     parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
     parser.add_argument("--tmplt-sigma", default='1', choices=['1','2','3', "full"], help="Size of the the template bank to be used for template bank generation around the expected trigger time, in sigmas. Default is 1. /!\\ If you specify a custom template bank with --template-bank, this argument will be ignored.")
     parser.add_argument("--ldg-tag", default=None, help="The \"accounting_group\" tag required for submitting to the LDG cluster. If not specified, the pipeline will be generated without the tag.")
+    parser.add_argument("--chunk-size", default=3000, type=int)
     args = parser.parse_args()
 
     # Dynamically find the Conda bin directory
@@ -565,46 +566,46 @@ def main():
 
     # 2. Content for the HTCondor submit file
     ldg_tag_line = f"accounting_group = {args.ldg_tag}" if args.ldg_tag else ""
-    sub_content = f"""executable = {sh_filename}
-    universe   = vanilla
+    import math
+    with open(WINDOW_FILE, 'r') as f:
+        lines = f.readlines()
+        
+    total_lines = len(lines)
+    num_chunks = max(1, math.ceil(total_lines / args.chunk_size))
+    
+    for i in range(num_chunks):
+        chunk_lines = lines[i * args.chunk_size : (i + 1) * args.chunk_size]
+        chunk_file = WINDOW_FILE.replace('.txt', f'_chunk_{i}.txt')
+        
+        with open(chunk_file, 'w') as f:
+            f.writelines(chunk_lines)
+            
+        chunk_sub = os.path.join(CONDOR_FILES, f'split_search_chunk_{i}.sub')
+        sub_content = f"""executable = {sh_filename}
+universe   = vanilla
+arguments  = "$(bank) $(start) $(end) $(tt)"
+output     = {LOG_DIR}/{SUFFIX}_search_$(bank)_$(start).out
+error      = {LOG_DIR}/{SUFFIX}_search_$(bank)_$(start).err
+log        = {LOG_DIR}/{SUFFIX}_search_cluster.log
+request_cpus   = 1
+request_memory = 4GB
+request_disk   = 1MB
+{ldg_tag_line}
+# --- PROTECTION ANTI-HANG ---
+periodic_remove = (JobStatus == 2) && (CurrentTime - EnteredCurrentStatus > 14400)
 
-    # Pass the three variables from the text file to the bash script
-    arguments  = "$(bank) $(start) $(end) $(tt)"
-
-    # Ensure logs don't overwrite each other + change path (I went for absolute path just to be sure)
-    output     = {LOG_DIR}/{SUFFIX}_search_$(bank)_$(start).out
-    error      = {LOG_DIR}/{SUFFIX}_search_$(bank)_$(start).err
-    log        = {LOG_DIR}/{SUFFIX}_search_cluster.log
-
-    # Request resources (adjust these according to your cluster's limits)
-    request_cpus   = 1
-    request_memory = 4GB
-    request_disk   = 1MB
-    {ldg_tag_line}
-
-    # Cluster overflow protection 
-    max_idle = 500
-
-    # hang protection
-    periodic_remove = (JobStatus == 2) && (CurrentTime - EnteredCurrentStatus > 14400)
-
-    # Queue a job for every line in the text file
-    queue bank, start, end, tt from {WINDOW_FILE}
-    """
-
-    # Write the bash script to disk
-    with open(sh_filename, "w") as f:
-        f.write(sh_content.strip() + "\n")
+queue bank, start, end, tt from {chunk_file}
+"""
+        with open(chunk_sub, 'w') as f:
+            f.write(sub_content.strip() + "\n")
+            
+    print(f"Generated {num_chunks} chunk files of {args.chunk_size} jobs max for parallel submission.")
 
     # Automatically make the bash script executable (equivalent to running 'chmod +x')
     st = os.stat(sh_filename)
     os.chmod(sh_filename, st.st_mode | stat.S_IEXEC)
 
-    # Write the submit file to disk
-    with open(sub_filename, "w") as f:
-        f.write(sub_content.strip() + "\n")
-
-    print(f"Successfully generated '{sh_filename}' and '{sub_filename}'")
+    print(f"Successfully generated chunk files.")
     print("Search preparation complete!")
     return 0
 

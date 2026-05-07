@@ -7,6 +7,10 @@ import yaml
 import subprocess 
 import time
 import glob
+import pandas as pd
+import numpy as np
+from astropy.time import Time
+import math
 
 def main():
     parser = argparse.ArgumentParser(description="Generate HTCondor DAG for PyCBC search.")
@@ -28,7 +32,8 @@ def main():
     parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Size of the time window to be searched around the expected trigger time, in sigmas. Default is 1.")
     parser.add_argument("--tmplt-sigma", default='1', choices=['1','2','3', "full"], help="Size of the the template bank to be used for template bank generation around the expected trigger time, in sigmas. Default is 1. /!\\ If you specify a custom template bank with --template-bank, this argument will be ignored.")
     parser.add_argument("--disk", default="3GB", help="Amount of disk space to request for the prep job. Default is \'3GB\'.")
-    # Signifiance related args
+    parser.add_argument("--chunk-size", default=3000, type=int, help="Number of jobs per chunk")
+    # Signifiance related args (deprecated)
     parser.add_argument("--compute-significance", action="store_true", help="If true, runs a significance job after the search to estimate FAR and p-value.")
     parser.add_argument("--significance-method", default="offsource", choices=["offsource", "timeslides"], help="Method to use for background estimation.")
     parser.add_argument("--n-background", default=50, type=int, help="Number of background windows/slides to use.") 
@@ -103,6 +108,7 @@ def main():
         elif sub_name == "prep.sub": # the prep step can be a bit more memory intensive because of the template bank generation, especially if the user specified a low detector threshold that leads to long time windows. 
             mem = "16GB"
             disk = args.disk
+            cmd_args += f" --chunk-size {args.chunk_size}"
         else:
             mem = "512MB"
             disk = "100MB"
@@ -175,21 +181,63 @@ VARS SIG config="{config_path}"
 PARENT SEARCH CHILD SIG
 """
 
+    # --- MATH BLOCK FOR EXACT CHUNKING ---
+    try:
+        EM_samp = pd.read_csv(config['KN_data']['EM_post_file'], delimiter=' ', dtype=np.float32)
+        KN_t0 = Time(config['KN_data']['first_detection'], format='isot', scale='utc').mjd
+        if args.OSW_sigma == "full":
+            p16, p84 = EM_samp['timeshift'].min(), EM_samp['timeshift'].max() 
+        elif args.OSW_sigma == "1":
+            p16, _, p84 = np.percentile(EM_samp['timeshift'], [15.865, 50, 84.135])
+        elif args.OSW_sigma == "2":
+            p16, p84 = np.percentile(EM_samp['timeshift'], [2.275, 97.725])
+        elif args.OSW_sigma == "3":
+            p16, p84 = np.percentile(EM_samp['timeshift'], [0.135, 99.865])
+            
+        time_gps = Time((KN_t0 + p16, KN_t0 + p84), format='mjd').gps
+        ON_START, ON_END = int(time_gps[0]), int(time_gps[1])
+        
+        window_size = config['GW_search']['window_size']
+        overlap = 16 
+        current = ON_START
+        w_count = 0
+        while current < ON_END:
+            w_count += 1
+            c_end = min(current + window_size, ON_END)
+            if c_end == ON_END: break
+            current = c_end - overlap
+            
+        num_splits = config['GW_search']['num_splits']
+        total_jobs = w_count * num_splits
+        num_chunks = max(1, math.ceil(total_jobs / args.chunk_size))
+    except Exception as e:
+        print(f"Warning: Could not pre-calculate jobs, defaulting to 1 chunk. Error: {e}")
+        num_chunks = 1
+    # -------------------------------------
+
+    search_nodes = ""
+    retry_lines = ""
+    parents_search = ""
+    for i in range(num_chunks):
+        chunk_sub = os.path.join(sub_files_dir, f"split_search_chunk_{i}.sub")
+        search_nodes += f"JOB SEARCH_{i} {chunk_sub}\n"
+        retry_lines += f"RETRY SEARCH_{i} 3\n"
+        parents_search += f"SEARCH_{i} "
+
     dag_content = f"""# Define the nodes
-JOB PREP {os.path.join(base_dir, "sub_files", "prep.sub")}
-JOB SEARCH {split_search_sub}
-JOB POST {os.path.join(base_dir, "sub_files", "post.sub")}
-{sig_dag_lines}
+JOB PREP {os.path.join(sub_files_dir, "prep.sub")}
+{search_nodes}
+JOB POST {os.path.join(sub_files_dir, "post.sub")}
 
-RETRY SEARCH 3
+{retry_lines}
 
-# Pass the config file path into the prep and post jobs dynamically
+# Pass the config file path dynamically
 VARS PREP config="{config_path}"
 VARS POST config="{config_path}"
 
 # Define the workflow dependencies
-PARENT PREP CHILD SEARCH
-PARENT SEARCH CHILD POST
+PARENT PREP CHILD {parents_search}
+PARENT {parents_search} CHILD POST
 """
     with open(dag_path, "w") as f:
         f.write(dag_content)
