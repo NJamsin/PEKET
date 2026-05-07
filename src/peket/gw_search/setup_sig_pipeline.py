@@ -147,7 +147,16 @@ PARENT SIG_SEARCH CHILD SIG_POST
                 if os.path.exists(err_file) and os.path.getsize(err_file) > 0:
                     with open(err_file, 'r') as f:
                         err_text = f.read()
-                        if "Traceback" in err_text or "Error" in err_text:
+                        
+                        is_critical = False
+                        if "Traceback" in err_text:
+                            is_critical = True
+                        elif "Error" in err_text:
+                            # On ignore les erreurs si ce sont juste les warnings de cache
+                            if "CacheMissingWarning" not in err_text and "MPLCONFIGDIR" not in err_text:
+                                is_critical = True
+                                
+                        if is_critical:
                             print(f"\n\nCRITICAL ERROR IN {os.path.basename(err_file)}:")
                             print(err_text)
                             sys.exit(1)

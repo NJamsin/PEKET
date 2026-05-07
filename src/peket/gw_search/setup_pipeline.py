@@ -235,15 +235,31 @@ PARENT SEARCH CHILD POST
                 if os.path.exists(prep_err) and os.path.getsize(prep_err) > 0:
                     with open(prep_err, 'r') as err_file:
                         err_text = err_file.read()
-                        if "Traceback" in err_text or "Error" in err_text:
-                            print("\n\nCRITICAL ERROR IN PREP STAGE:")
+                        is_critical = False
+                        if "Traceback" in err_text:
+                            is_critical = True
+                        elif "Error" in err_text:
+                            # On ignore les erreurs si ce sont juste les warnings de cache
+                            if "CacheMissingWarning" not in err_text and "MPLCONFIGDIR" not in err_text:
+                                is_critical = True
+                                
+                        if is_critical:
+                            print(f"\n\nCRITICAL ERROR IN {os.path.basename(err_file)}:")
                             print(err_text)
                             sys.exit(1)
                 #  Check specific error files (if they exist and have content)
                 if os.path.exists(post_err) and os.path.getsize(post_err) > 0:
                     with open(post_err, 'r') as err_file:
                         err_text = err_file.read()
-                        if "Traceback" in err_text or "Error" in err_text:
+                        is_critical = False
+                        if "Traceback" in err_text:
+                            is_critical = True
+                        elif "Error" in err_text:
+                            # On ignore les erreurs si ce sont juste les warnings de cache
+                            if "CacheMissingWarning" not in err_text and "MPLCONFIGDIR" not in err_text:
+                                is_critical = True
+
+                        if is_critical:
                             print("\n\nCRITICAL ERROR IN POST STAGE:")
                             print(err_text)
                             sys.exit(1)

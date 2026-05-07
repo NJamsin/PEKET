@@ -257,7 +257,7 @@ request_disk   = 1MB
 {ldg_tag_line}
 
 # Cluster overflow protection 
-max_materialize = 9000
+max_idle = 500 
 periodic_remove = (JobStatus == 2) && (CurrentTime - EnteredCurrentStatus > 14400)
 queue slide, bank, start, end, tt from {window_file}
 """
