@@ -13,6 +13,7 @@ from astropy.time import Time
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
+import concurrent.futures
 
 def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
     """
@@ -98,19 +99,28 @@ def read_top_trigger_stat(base_dir, suffix):
         if 'Time' in part: time_val = float(part.split(':')[1].strip())
     return stat_val, time_val
 
-def collect_background_stats(bg_dir):
-    all_snrs, all_times = [], []
-    for fpath in sorted(glob.glob(os.path.join(bg_dir, '*/*.hdf'))):
-        try:
-            with h5py.File(fpath, 'r') as hf:
-                if 'network' not in hf: continue
-                snrs = hf['network'].get('reweighted_snr', hf['network'].get('coherent_snr', []))[:]
-                times = hf['network'].get('end_time', hf['network'].get('time', np.zeros_like(snrs)))[:]
-                if len(snrs) > 0:
-                    all_snrs.extend(snrs)
-                    all_times.extend(times)
-        except Exception: continue
-    return np.array(all_snrs), np.array(all_times)
+def process_single_file(fpath):
+    """ Worker function to process one single file and extract its SNRs + Segment Info """
+    snrs = []
+    segment = None
+    
+    # parse filename
+    basename = os.path.basename(fpath)
+    match = re.search(r'_bg_bank\d+_(\d+)-(\d+)_slide(\d+)\.hdf', basename)
+    if match:
+        segment = (int(match.group(3)), int(match.group(1)), int(match.group(2)))
+        
+    # read triggers
+    try:
+        with h5py.File(fpath, 'r') as hf:
+            if 'network' in hf:
+                snr_data = hf['network'].get('reweighted_snr', hf['network'].get('coherent_snr', []))
+                if len(snr_data) > 0:
+                    snrs = snr_data[:]
+    except Exception:
+        pass # Ignore corrupted files silently
+        
+    return snrs, segment
 
 def main():
     parser = argparse.ArgumentParser()
@@ -140,28 +150,40 @@ def main():
     time_gps = Time((KN_t0 + p16, KN_t0 + p84), format='mjd').gps
     WIN_DUR = int(time_gps[1]) - int(time_gps[0])
 
-    print(f"Collecting background triggers from {BG_OUT_DIR}...")
-    bg_stats, _ = collect_background_stats(BG_OUT_DIR)
+    print(f"Locating background triggers in {BG_OUT_DIR}...")
+    file_list = glob.glob(os.path.join(BG_OUT_DIR, '*/*.hdf'))
+    total_files = len(file_list)
+    print(f"Found {total_files} files to process.")
 
-    # Compute total background time analyzed (T_bg) by parsing the background segment files.
-    T_bg = 0
+    # Multi-thread reading
+    all_snrs = []
     analyzed_segments = set()
-    for fpath in sorted(glob.glob(os.path.join(BG_OUT_DIR, '*/*.hdf'))):
-        try:
-            # CHECK DE SECURITE : try opening file before to see if it is corrupted
-            with h5py.File(fpath, 'r') as hf:
-                if 'network' not in hf: continue 
+    completed = 0
+
+    print(f"Starting parallel data extraction with 32 threads...")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
+        futures = {executor.submit(process_single_file, f): f for f in file_list}
+        
+        for future in concurrent.futures.as_completed(futures):
+            snrs, segment = future.result()
             
-            basename = os.path.basename(fpath)
-            match = re.search(r'_bg_bank\d+_(\d+)-(\d+)_slide(\d+)\.hdf', basename)
-            if match:
-                analyzed_segments.add((int(match.group(3)), int(match.group(1)), int(match.group(2))))
-        except Exception:
-            continue
-            
-    # Remove padding
+            if len(snrs) > 0:
+                all_snrs.append(snrs)
+            if segment is not None:
+                analyzed_segments.add(segment)
+                
+            completed += 1
+            if completed % 10000 == 0:
+                sys.stdout.write(f"\r  -> Processed {completed}/{total_files} files...")
+                sys.stdout.flush()
+                
+    print(f"\r  -> Processed {completed}/{total_files} files. Done!\n")
+    bg_stats = np.concatenate(all_snrs) if all_snrs else np.array([])
+
+    # Compute T_bg using the exact same padding removal logic
+    T_bg = 0
     for (slide, start_t, end_t) in analyzed_segments:
-        T_bg += max(0, (end_t - start_t) - 16)
+        T_bg += max(0, (end_t - start_t) - 16) # -16 for padding
         
     n_louder = int(np.sum(bg_stats >= top_stat))
     far = (1 + n_louder) / T_bg if T_bg > 0 else np.inf
