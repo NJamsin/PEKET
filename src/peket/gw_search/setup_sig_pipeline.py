@@ -153,7 +153,7 @@ queue
     dag_content = f"""# Define the nodes for Significance Estimation
 JOB SIG_PREP {os.path.join(sub_files_dir, "sig_prep.sub")}
 {search_nodes}
-JOB SIG_POST {os.path.join(sub_files_dir, "sig_post.sub")}
+FINAL SIG_POST {os.path.join(sub_files_dir, "sig_post.sub")}
 
 {retry_lines}
 
@@ -163,7 +163,6 @@ VARS SIG_POST config="{config_path}"
 
 # Define the workflow dependencies
 PARENT SIG_PREP CHILD {parents_search}
-PARENT {parents_search} CHILD SIG_POST
 """
     with open(dag_path, "w") as f:
         f.write(dag_content)

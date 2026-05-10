@@ -227,7 +227,7 @@ PARENT SEARCH CHILD SIG
     dag_content = f"""# Define the nodes
 JOB PREP {os.path.join(sub_files_dir, "prep.sub")}
 {search_nodes}
-JOB POST {os.path.join(sub_files_dir, "post.sub")}
+FINAL POST {os.path.join(sub_files_dir, "post.sub")}
 
 {retry_lines}
 
@@ -237,7 +237,6 @@ VARS POST config="{config_path}"
 
 # Define the workflow dependencies
 PARENT PREP CHILD {parents_search}
-PARENT {parents_search} CHILD POST
 """
     with open(dag_path, "w") as f:
         f.write(dag_content)
