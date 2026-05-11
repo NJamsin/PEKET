@@ -113,10 +113,9 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
         ax.fill_between(sorted_bg, far_bg_yr, 1e-20, color='silver', alpha=0.3)
 
         # EXP FIT
-        p90 = np.percentile(sorted_bg, 99.5)
-        tail_mask = sorted_bg >= p90
-        x_data = sorted_bg[tail_mask]
-        y_data = far_bg_yr[tail_mask]
+        N_tail = min(500, len(sorted_bg) // 10) # take either the top 500 bg trigg of the 90% percentile
+        x_data = sorted_bg[-N_tail:]
+        y_data = far_bg_yr[-N_tail:]
 
         if len(x_data) > 2:
             # y = a * exp(b * x) => ln(y) = ln(a) + b*x
@@ -129,7 +128,7 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
             x_fit = np.linspace(np.min(x_data), x_max, 1000)
             y_fit = a_fit * np.exp(b_fit * x_fit)
 
-            ax.plot(x_fit, y_fit, label='Fitted Tail (Exponential)', color='red', linestyle='--')
+            ax.plot(x_fit, y_fit, label='Fitted Tail (Exponential)', color='red', linestyle='-')
 
             # Compute extrapolated FAR/FAP
             top_far_yr_extrapolated = a_fit * np.exp(b_fit * top_stat)
