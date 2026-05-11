@@ -89,6 +89,83 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
     plt.close(fig)
     print(f"  FAR vs SNR plot saved to: {plot_path}")
 
+def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
+    """ Plot with exponential fit + 5 sig threshold """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    valid_bg = bg_stats[bg_stats > 0]
+    
+    # Compute 5 sig threshold
+    p_5sigma = 2.8665e-7
+    # FAR = -ln(1 - p) / T_onsource
+    far_5sigma_Hz = -np.log(1 - p_5sigma) / T_onsource
+    far_5sigma_yr = far_5sigma_Hz * 3.156e7
+
+    top_far_yr_extrapolated = None
+    top_fap_extrapolated = None
+
+    if len(valid_bg) > 0 and T_bg > 0:
+        sorted_bg = np.sort(valid_bg)
+        cum_counts = np.arange(len(sorted_bg), 0, -1)
+        far_bg_yr = (cum_counts / T_bg) * 3.156e7
+
+        # empirical bg
+        ax.semilogy(sorted_bg, far_bg_yr, color='dimgray', linewidth=2, alpha=0.8, label='Empirical Background')
+        ax.fill_between(sorted_bg, far_bg_yr, 1e-20, color='silver', alpha=0.3)
+
+        # EXP FIT
+        p90 = np.percentile(sorted_bg, 90)
+        tail_mask = sorted_bg >= p90
+        x_data = sorted_bg[tail_mask]
+        y_data = far_bg_yr[tail_mask]
+
+        if len(x_data) > 2:
+            # y = a * exp(b * x) => ln(y) = ln(a) + b*x
+            coefficients = np.polyfit(x_data, np.log(y_data), 1)
+            b_fit = coefficients[0]
+            a_fit = np.exp(coefficients[1])
+
+            # Extrapolate up to the 5sig thresh
+            x_max = max(top_stat * 1.1, np.max(sorted_bg))
+            x_fit = np.linspace(np.min(x_data), x_max, 1000)
+            y_fit = a_fit * np.exp(b_fit * x_fit)
+
+            ax.plot(x_fit, y_fit, label='Fitted Tail (Exponential)', color='red', linestyle='--')
+
+            # Compute extrapolated FAR/FAP
+            top_far_yr_extrapolated = a_fit * np.exp(b_fit * top_stat)
+            top_far_Hz = top_far_yr_extrapolated / 3.156e7
+            top_fap_extrapolated = 1.0 - np.exp(-top_far_Hz * T_onsource)
+
+    # Trace 5 sig line
+    ax.axhline(far_5sigma_yr, color='blue', linestyle='--', label=f'5 $\sigma$ threshold ({far_5sigma_yr:.2e} /yr)')
+    
+    # plot best trigger candidate
+    if top_far_yr_extrapolated is not None:
+        ax.axvline([top_stat], color='indigo', linestyle='-.', zorder=5, label=f'Top Trigger Extrapolated\nFAR: {top_far_yr_extrapolated:.2e} /yr\np-value: {top_fap_extrapolated:.2e}')
+        ax.scatter([top_stat], [top_far_yr_extrapolated], color='indigo', s=60, zorder=6)
+
+    ax.set_xlabel('Ranking Statistic (reweighted SNR)', fontsize=12)
+    ax.set_ylabel('False Alarm Rate (1/yr)', fontsize=12)
+    ax.set_title(f'Extrapolated Background FAR vs Ranking Statistic', fontsize=14)
+    
+    if len(valid_bg) > 0 and T_bg > 0: # dyn ylim 
+        y_min = min(far_5sigma_yr / 10, top_far_yr_extrapolated / 10 if top_far_yr_extrapolated else 1e-5)
+        ax.set_ylim(bottom=y_min, top=max(far_bg_yr) * 5)
+
+    ax.grid(True, which="major", ls="-", alpha=0.5)
+    ax.grid(True, which="minor", ls=":", alpha=0.3)
+    
+    leg = ax.legend(loc='upper right', numpoints=1)
+    for line in leg.get_lines():
+        line.set_linewidth(2)
+    
+    plt.tight_layout()
+    plt.savefig(plot_path, dpi=300)
+    plt.close(fig)
+    print(f"  Fitted FAR vs SNR plot saved to: {plot_path}")
+    
+    return top_far_yr_extrapolated, top_fap_extrapolated
+
 def read_top_trigger_stat(base_dir, suffix):
     cand_file = os.path.join(base_dir, 'out', f'{suffix}_top_candidates.txt')
     if not os.path.exists(cand_file): return None, None
@@ -134,6 +211,8 @@ def main():
     SIG_DIR = os.path.join(BASE_DIR, 'significance')
     BG_OUT_DIR = os.path.join(SIG_DIR, 'out')
     PLOT_DIR = os.path.join(BASE_DIR, 'plots')
+    for dir in [BASE_DIR, SIG_DIR, BG_OUT_DIR, PLOT_DIR]:
+        os.makedirs(dir, exist_ok=True)
 
     top_stat, top_time = read_top_trigger_stat(BASE_DIR, SUFFIX)
     if top_stat is None:
@@ -191,27 +270,35 @@ def main():
     far_yr = far * 3.156e7
     prefix = "< " if n_louder == 0 else ""
 
-    print(f"\n{'─'*50}")
+    print(f"{'─'*50}")
     print(f"  Top trigger stat     : {top_stat:.4f}")
     print(f"  Louder than top      : {n_louder}")
     print(f"  T_background         : {T_bg:.1f} s  ({T_bg/3.156e7:.3f} yr)")
-    print(f"  FAR                  : {prefix}{far:.3e} Hz  ({prefix}{far_yr:.3f} /yr)")
-    print(f"  p-value (on-source)  : {prefix}{p_value:.3e}")
+    print(f"  FAR (Empirical)      : {prefix}{far:.3e} Hz  ({prefix}{far_yr:.3f} /yr)")
+    print(f"  p-value (Empirical)  : {prefix}{p_value:.3e}")
     print(f"{'─'*50}\n")
+
+    plot_far_path = os.path.join(PLOT_DIR, f'{SUFFIX}_far_vs_snr.png')
+    print("Generating Raw FAR vs SNR plot...")
+    plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_far_path, WIN_DUR)
+
+    plot_fitted_path = os.path.join(PLOT_DIR, f'{SUFFIX}_fitted_far_vs_snr.png')
+    print("Generating Fitted FAR vs SNR plot...")
+    far_yr_extrapolated, p_extrapolated = plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_fitted_path, WIN_DUR)
 
     sig_out = os.path.join(BASE_DIR, 'out', f'{SUFFIX}_significance.txt')
     with open(sig_out, 'w') as f:
-        f.write(f"Top stat       : {top_stat:.6f}\n")
-        f.write(f"N louder       : {n_louder}\n")
-        f.write(f"T background   : {T_bg:.2f} s\n")
-        f.write(f"FAR            : {prefix}{far:.6e} Hz\n")
-        f.write(f"FAR            : {prefix}{far_yr:.6e} /yr\n")
-        f.write(f"p-value        : {prefix}{p_value:.6e}\n")
-        f.write(f"Bounding limit : {str(n_louder == 0)}\n")
-
-    plot_far_path = os.path.join(PLOT_DIR, f'{SUFFIX}_far_vs_snr.png')
-    print("\nGenerating FAR vs SNR plot...")
-    plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_far_path, WIN_DUR)
+        f.write(f"Top stat                : {top_stat:.6f}\n")
+        f.write(f"N louder                : {n_louder}\n")
+        f.write(f"T background            : {T_bg:.2f} s\n")
+        f.write(f"FAR (Empirical)         : {prefix}{far:.6e} Hz\n")
+        f.write(f"FAR (Empirical)         : {prefix}{far_yr:.6e} /yr\n")
+        f.write(f"p-value (Empirical)     : {prefix}{p_value:.6e}\n")
+        f.write(f"Bounding limit          : {str(n_louder == 0)}\n")
+        if far_yr_extrapolated is not None:
+            f.write(f"FAR (Extrapolated)      : {far_yr_extrapolated/3.156e7:.6e} Hz\n")
+            f.write(f"FAR (Extrapolated)      : {far_yr_extrapolated:.6e} /yr\n")
+            f.write(f"p-value (Extrapolated)  : {p_extrapolated:.6e}\n")
 
     print("Significance estimation complete.")
     return 0
