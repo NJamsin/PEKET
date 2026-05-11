@@ -31,6 +31,8 @@ def main():
     parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"], help="Search window sigma size.")
     parser.add_argument("--ldg-tag", default=None, help="The accounting_group tag required for IGWN.")
     parser.add_argument("--chunk-size", default=3000, type=int, help="Number of jobs per chunk to bypass Schedd limits")
+    parser.add_argument("--fit-steps", type=int, default=100, help="Number of points to use for the exponential fit (starting from the loudest)")
+    parser.add_argument("--exclude-top-steps", type=int, default=5, help="Number of loudest points to exclude from the exponential fit (to avoid glitches)")
 
     args = parser.parse_args()
 
@@ -63,7 +65,7 @@ def main():
             mem = "2GB"
             disk = "2GB"
         elif sub_name == "sig_post.sub":
-            cmd_args += f" --OSW-sigma {args.OSW_sigma}"
+            cmd_args += f" --OSW-sigma {args.OSW_sigma} --fit-steps {args.fit_steps} --exclude-top-steps {args.exclude_top_steps}"
             mem = "1GB"
             disk = "500MB"
 

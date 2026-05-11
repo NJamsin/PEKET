@@ -89,7 +89,7 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
     plt.close(fig)
     print(f"  FAR vs SNR plot saved to: {plot_path}")
 
-def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
+def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource, fit_steps=100, exclude_top_steps=5):
     """ Plot with exponential fit + 5 sig threshold """
     fig, ax = plt.subplots(figsize=(10, 6))
     valid_bg = bg_stats[bg_stats > 0]
@@ -113,9 +113,24 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
         ax.fill_between(sorted_bg, far_bg_yr, 1e-20, color='silver', alpha=0.3)
 
         # EXP FIT
-        N_tail = min(500, len(sorted_bg) // 10) # take either the top 500 bg trigg of the 90% percentile
-        x_data = sorted_bg[-N_tail:]
-        y_data = far_bg_yr[-N_tail:]
+        x_rounded = np.round(sorted_bg, decimals=2) # Round to 2 decimals to group close SNRs together
+        unique_snrs, unique_indices = np.unique(x_rounded, return_index=True)
+        y_unique = far_bg_yr[unique_indices]
+        sort_idx = np.argsort(unique_snrs)
+        x_clean = unique_snrs[sort_idx]
+        y_clean = y_unique[sort_idx]
+        sort_idx = np.argsort(unique_snrs)
+
+        if len(x_clean) > exclude_top_steps + 10:
+            start_idx = max(0, len(x_clean) - exclude_top_steps - fit_steps)
+            end_idx = len(x_clean) - exclude_top_steps
+
+            x_data = x_clean[start_idx : end_idx]
+            y_data = y_clean[start_idx : end_idx]
+        else:
+            print("/!\ Not enough background points to perform a robust fit.")
+            x_data = x_clean
+            y_data = y_clean
 
         if len(x_data) > 2:
             # y = a * exp(b * x) => ln(y) = ln(a) + b*x
@@ -125,7 +140,7 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
 
             # Extrapolate up to the 5sig thresh
             x_max = max(top_stat * 1.1, np.max(sorted_bg))
-            x_fit = np.linspace(np.min(x_data), x_max, 1000)
+            x_fit = np.linspace(x_data[len(x_data)//2], x_max, 1000)
             y_fit = a_fit * np.exp(b_fit * x_fit)
 
             ax.plot(x_fit, y_fit, label='Fitted Tail (Exponential)', color='red', linestyle='-')
@@ -202,6 +217,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config", help="Path to config")
     parser.add_argument("--OSW-sigma", default='1', choices=['1','2','3', "full"])
+    parser.add_argument("--fit-steps", type=int, default=100, help="Number of points to use for the exponential fit (starting from the loudest)")
+    parser.add_argument("--exclude-top-steps", type=int, default=5, help="Number of loudest points to exclude from the exponential fit (to avoid glitches)")
     args = parser.parse_args()
 
     with open(args.config, 'r') as f: config = yaml.safe_load(f)
@@ -275,7 +292,7 @@ def main():
 
     plot_fitted_path = os.path.join(PLOT_DIR, f'{SUFFIX}_fitted_far_vs_snr.png')
     print("Generating Fitted FAR vs SNR plot...")
-    far_yr_extrapolated, p_extrapolated = plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_fitted_path, WIN_DUR)
+    far_yr_extrapolated, p_extrapolated = plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_fitted_path, WIN_DUR, args.fit_steps, args.exclude_top_steps)
 
     print(f"{'─'*50}")
     print(f"  Top trigger stat     : {top_stat:.4f}")
