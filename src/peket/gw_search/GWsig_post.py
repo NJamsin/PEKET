@@ -113,7 +113,7 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
         ax.fill_between(sorted_bg, far_bg_yr, 1e-20, color='silver', alpha=0.3)
 
         # EXP FIT
-        p90 = np.percentile(sorted_bg, 90)
+        p90 = np.percentile(sorted_bg, 99.5)
         tail_mask = sorted_bg >= p90
         x_data = sorted_bg[tail_mask]
         y_data = far_bg_yr[tail_mask]
@@ -141,7 +141,7 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
     
     # plot best trigger candidate
     if top_far_yr_extrapolated is not None:
-        ax.axvline([top_stat], color='indigo', linestyle='-.', zorder=5, label=f'Top Trigger Extrapolated\nFAR: {top_far_yr_extrapolated:.2e} /yr\np-value: {top_fap_extrapolated:.2e}')
+        ax.axvline([top_stat], color='indigo', linestyle='-.', zorder=5, label=f'Top Trigger')
         ax.scatter([top_stat], [top_far_yr_extrapolated], color='indigo', s=60, zorder=6)
 
     ax.set_xlabel('Ranking Statistic (reweighted SNR)', fontsize=12)
@@ -155,7 +155,7 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
     ax.grid(True, which="major", ls="-", alpha=0.5)
     ax.grid(True, which="minor", ls=":", alpha=0.3)
     
-    leg = ax.legend(loc='upper right', numpoints=1)
+    leg = ax.legend(loc='upper right', numpoints=5)
     for line in leg.get_lines():
         line.set_linewidth(2)
     
@@ -270,14 +270,6 @@ def main():
     far_yr = far * 3.156e7
     prefix = "< " if n_louder == 0 else ""
 
-    print(f"{'─'*50}")
-    print(f"  Top trigger stat     : {top_stat:.4f}")
-    print(f"  Louder than top      : {n_louder}")
-    print(f"  T_background         : {T_bg:.1f} s  ({T_bg/3.156e7:.3f} yr)")
-    print(f"  FAR (Empirical)      : {prefix}{far:.3e} Hz  ({prefix}{far_yr:.3f} /yr)")
-    print(f"  p-value (Empirical)  : {prefix}{p_value:.3e}")
-    print(f"{'─'*50}\n")
-
     plot_far_path = os.path.join(PLOT_DIR, f'{SUFFIX}_far_vs_snr.png')
     print("Generating Raw FAR vs SNR plot...")
     plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_far_path, WIN_DUR)
@@ -285,6 +277,17 @@ def main():
     plot_fitted_path = os.path.join(PLOT_DIR, f'{SUFFIX}_fitted_far_vs_snr.png')
     print("Generating Fitted FAR vs SNR plot...")
     far_yr_extrapolated, p_extrapolated = plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_fitted_path, WIN_DUR)
+
+    print(f"{'─'*50}")
+    print(f"  Top trigger stat     : {top_stat:.4f}")
+    print(f"  Louder than top      : {n_louder}")
+    print(f"  T_background         : {T_bg:.1f} s  ({T_bg/3.156e7:.3f} yr)")
+    print(f"  FAR (Empirical)      : {prefix}{far:.3e} Hz  ({prefix}{far_yr:.3f} /yr)")
+    print(f"  p-value (Empirical)  : {prefix}{p_value:.3e}\n")
+    print(f"FAR (Extrapolated)      : {far_yr_extrapolated/3.156e7:.6e} Hz\n")
+    print(f"FAR (Extrapolated)      : {far_yr_extrapolated:.6e} /yr\n")
+    print(f"p-value (Extrapolated)  : {p_extrapolated:.6e}")
+    print(f"{'─'*50}\n")
 
     sig_out = os.path.join(BASE_DIR, 'out', f'{SUFFIX}_significance.txt')
     with open(sig_out, 'w') as f:
