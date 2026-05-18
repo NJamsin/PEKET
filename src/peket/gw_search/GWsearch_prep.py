@@ -564,6 +564,9 @@ def main():
         --output {OUT_DIR}/{SUFFIX}triggers_bank${{BANK_NUM}}_${{START_TIME}}-${{END_TIME}}.hdf
     """
 
+    with open(sh_filename, 'w') as f:
+        f.write(sh_content)
+
     # 2. Content for the HTCondor submit file
     ldg_tag_line = f"accounting_group = {args.ldg_tag}" if args.ldg_tag else ""
     import math
