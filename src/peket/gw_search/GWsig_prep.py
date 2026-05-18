@@ -201,6 +201,11 @@ START_TIME=$3
 END_TIME=$4
 TT=$5
 
+export MPLCONFIGDIR="/tmp/matplotlib_noah_slide${{SLIDE}}_${{BANK_NUM}}_${{START_TIME}}"
+export ASTROPY_CACHE_DIR="/tmp/astropy_noah_slide${{SLIDE}}_${{BANK_NUM}}_${{START_TIME}}"
+mkdir -p $MPLCONFIGDIR
+mkdir -p $ASTROPY_CACHE_DIR
+
 mkdir -p {BG_OUT_DIR}/bank_${{BANK_NUM}}
 
 {pycbc_inspiral} \\
