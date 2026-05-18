@@ -527,6 +527,11 @@ def main():
     END_TIME=$3
     TT=$4
 
+    export MPLCONFIGDIR="/tmp/matplotlib_noah_${{BANK_NUM}}_${{START_TIME}}"
+    export ASTROPY_CACHE_DIR="/tmp/astropy_noah_${{BANK_NUM}}_${{START_TIME}}"
+    mkdir -p $MPLCONFIGDIR
+    mkdir -p $ASTROPY_CACHE_DIR
+
     {pycbc_inspiral} \
         -v \
         --instruments H1 L1 \
