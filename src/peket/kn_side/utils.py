@@ -8,9 +8,12 @@ import matplotlib.pyplot as plt
 import os
 from astropy.time import Time
 import matplotlib.colors as mcolors
-from rubin_sim.phot_utils import PhotometricParameters, Bandpass
-from rubin_sim.phot_utils import calc_snr_m5, calc_mag_error_m5
-from rubin_scheduler.data import get_data_dir
+try:
+    from rubin_sim.phot_utils import PhotometricParameters, Bandpass
+    from rubin_sim.phot_utils import calc_snr_m5, calc_mag_error_m5
+    from rubin_scheduler.data import get_data_dir
+except ImportError:
+    print("Warning: rubin_sim.phot_utils or rubin_scheduler.data not found. Some LSST related functions may not work.")
 from astropy.cosmology import Planck18, z_at_value
 from lal import MRSUN_SI
 import glob
@@ -434,7 +437,6 @@ def generate_synth_lc_fiesta(model_name='Bu2026_MLP',
                             "v_ej_wind": 0.1,
                             "Ye_dyn": 0.2,
                             "Ye_wind": 0.35,
-                            "timeshift": 0.0
                         },
                     filters_band=['ps1::g', 'ps1::r', 'ps1::i', 'ps1::z', 'ps1::y'],
                     noise_level=0.2,
@@ -487,9 +489,7 @@ def generate_synth_lc_fiesta(model_name='Bu2026_MLP',
         Trigger time in MJD.
     
     """
-    ts = -1 * model_param["timeshift"]
-    print(f"Generating synthetic lightcurve with timeshift = {ts} days")
-    model_param["timeshift"] = 0.0 # we set timeshift to 0 for the generation and we will apply it later to the sample time array 
+    print(f"Generating synthetic lightcurve with timeshift = {delay} days")
     sample_times = np.arange(delay, obs_duration, 1/pts_per_day)
     for t in range(len(sample_times)):
         if t == 0:
@@ -500,13 +500,13 @@ def generate_synth_lc_fiesta(model_name='Bu2026_MLP',
     except Exception as e:
         print(f"  - {model_name}: error during SVD model creation ->", e)
         raise e
-    del model_param["timeshift"] # we remove timeshift from the model parameters because it's not a parameter of the model, it's just a shift that we will apply to the sample times later
+    if "timeshift" in model_param:
+        del model_param["timeshift"] # we remove timeshift from the model parameters because it's not a parameter of the model, it's just a shift that we will apply to the sample times later
     mag_svd = model.generate_lightcurve(sample_times, model_param)
     mag_svd_noisy, mag_svd_errors = add_noise_error(mag_svd, noise_level=noise_level, max_error_level=max_error_level)
     mag_svd_noisy_app = abs_to_app_mag(mag_svd_noisy, distance_mpc=model_param["luminosity_distance"])
-    model_param["timeshift"] = -1 * ts # we put back the original timeshift value for the formatting function
     print("Filters:", filters_band)
-    data_nmma_svd, trigger = format_nmma_data_v2(sample_times, mag_svd_noisy_app, mag_svd_errors, filters_band, trigger_iso=trigger_iso, timeshift=ts)
+    data_nmma_svd, trigger = format_nmma_data_v2(sample_times, mag_svd_noisy_app, mag_svd_errors, filters_band, trigger_iso=trigger_iso, timeshift=0)
     if detection_limit_dict is not None:
         # apply detection limits
         for filter, limit in detection_limit_dict.items():
@@ -515,7 +515,12 @@ def generate_synth_lc_fiesta(model_name='Bu2026_MLP',
             to_remove = filter_mask & limit_mask # combine masks
             data_nmma_svd = data_nmma_svd[~to_remove]
     if save:
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        # get the directory path from the executed file path and create the directory if it doesn't exist
+        dirpath = os.getcwd()
+        print(f"Saving synthetic lightcurve data to {dirpath}...")
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
+            filename = os.path.join(dirpath, filename)
         data_nmma_svd.to_csv(filename, sep=' ', index=False, header=False)
     return data_nmma_svd, trigger
 
@@ -533,7 +538,6 @@ def generate_synth_lc_v2(model_name='Bu2019lm',
                             "log10_mej_wind": -1,
                             "inclination_EM": 0.5,
                             "luminosity_distance": 40,
-                            "timeshift": 0.0
                         },
                     filters_band=['ps1::g', 'ps1::r', 'ps1::i'],
                     noise_level=0.3,
@@ -581,6 +585,8 @@ def generate_synth_lc_v2(model_name='Bu2019lm',
         Filename to save the generated data if save is True.
     detection_limit_dict : dict or None
         Dictionary specifying detection limits for each filter. If None, no detection limits are applied.
+    svd_path : str
+        Path to the directory where NMMA's SVD models are stored locally. 
     
     Returns
     -------
@@ -590,8 +596,7 @@ def generate_synth_lc_v2(model_name='Bu2019lm',
         Trigger time in MJD.
     
     """
-    ts = -1 * model_param["timeshift"]
-    print(f"Generating synthetic lightcurve with timeshift = {ts} days")
+    print(f"Generating synthetic lightcurve with timeshift = {delay} days")
     model_param["timeshift"] = 0.0 # we set timeshift to 0 for the generation and we will apply it later to the sample time array 
     sample_times = np.arange(delay, obs_duration, 1/pts_per_day)
     for t in range(len(sample_times)):
@@ -611,9 +616,8 @@ def generate_synth_lc_v2(model_name='Bu2019lm',
     mag_svd = svd_model.generate_lightcurve(sample_times, model_param)
     mag_svd_noisy, mag_svd_errors = add_noise_error(mag_svd, noise_level=noise_level, max_error_level=max_error_level)
     mag_svd_noisy_app = abs_to_app_mag(mag_svd_noisy, distance_mpc=model_param["luminosity_distance"])
-    model_param["timeshift"] = -1 * ts # we put back the original timeshift value for the formatting function
     print("Filters:", filters_band)
-    data_nmma_svd, trigger = format_nmma_data_v2(sample_times, mag_svd_noisy_app, mag_svd_errors, filters_band, trigger_iso=trigger_iso, timeshift=ts)
+    data_nmma_svd, trigger = format_nmma_data_v2(sample_times, mag_svd_noisy_app, mag_svd_errors, filters_band, trigger_iso=trigger_iso, timeshift=0)
     if detection_limit_dict is not None:
         # apply detection limits
         for filter, limit in detection_limit_dict.items():
@@ -622,7 +626,12 @@ def generate_synth_lc_v2(model_name='Bu2019lm',
             to_remove = filter_mask & limit_mask # combine masks
             data_nmma_svd = data_nmma_svd[~to_remove]
     if save:
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        # get the directory path from the executed file path and create the directory if it doesn't exist
+        dirpath = os.getcwd()
+        print(f"Saving synthetic lightcurve data to {dirpath}...")
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
+            filename = os.path.join(dirpath, filename)
         data_nmma_svd.to_csv(filename, sep=' ', index=False, header=False)
     return data_nmma_svd, trigger
 
@@ -839,8 +848,15 @@ def plot_param_evolution(MODEL, DIR, UL=False, true_merger='2020-01-07T00:00:00.
             }
         for band in lc[1].unique():
             band_df = lc[lc[1]==band]
+            
+            # datetime
             times = pd.to_datetime(band_df[0].values)
-            axx.errorbar(times, band_df[2], yerr=band_df[3], fmt='o', label=band, ls='-')
+            
+            # relative time 
+            times_days = (times - pd.to_datetime(true_merger)).total_seconds() / (3600 * 24)
+            
+            # lighter x axis
+            axx.errorbar(times_days, band_df[2], yerr=band_df[3], fmt='o', label=band, ls='-')
         axx.text(0.001, 0.99, f"LC {idx}", transform=axx.transAxes, fontsize=20, verticalalignment='top')
         # temp modif for 1 plot
         #txt = "Bu2019lm" if idx == 0 else "Ka2017" if idx == 1 else "Bu2026_MLP"
@@ -952,8 +968,12 @@ def plot_param_evolution(MODEL, DIR, UL=False, true_merger='2020-01-07T00:00:00.
                 }
             for band in lc[1].unique():
                 band_df = lc[lc[1]==band]
+                
                 times = pd.to_datetime(band_df[0].values)
-                axx.errorbar(times, band_df[2], yerr=band_df[3], fmt='o', label=band, ls='-')
+                
+                times_days = (times - pd.to_datetime(true_merger)).total_seconds() / (3600 * 24)
+                
+                axx.errorbar(times_days, band_df[2], yerr=band_df[3], fmt='o', label=band, ls='-')
             axx.text(0.001, 0.99, f"LC {idx}", transform=axx.transAxes, fontsize=20, verticalalignment='top')
             #txt = "Bu2019lm" if idx == 0 else "Ka2017" if idx == 1 else "Bu2026_MLP"
             #axx.text(0.001, 0.99, txt, transform=axx.transAxes, fontsize=20, verticalalignment='top')
