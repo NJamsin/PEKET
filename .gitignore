@@ -16,3 +16,7 @@ eggs/
 *.egg
 jamsin/
 memoir_grid/
+
+test_injection/data/background/*.gwf
+
+test_injection/significance/*.txt
