@@ -211,12 +211,31 @@ def slide_limiter(n_ifos, slide_shift, segment_length):
 
 def read_top_trigger_stat(base_dir, suffix):
     cand_file = os.path.join(base_dir, 'out', f'{suffix}_top_candidates.txt')
-    if not os.path.exists(cand_file): return None, None
-    with open(cand_file, 'r') as f: first_line = f.readline().strip()
+    if not os.path.exists(cand_file): 
+        print(f"Cannot find the file: {cand_file}")
+        return None, None
+        
+    with open(cand_file, 'r') as f: 
+        first_line = f.readline().strip()
+        
+    if not first_line:
+        print(f"File {cand_file} is empty.")
+        return None, None
+
     stat_val, time_val = None, None
-    for part in first_line.split('|'):
-        if 'Rank Stat' in part: stat_val = float(part.split(':')[1].strip())
-        if 'Time' in part: time_val = float(part.split(':')[1].strip())
+    
+    import re
+    stat_match = re.search(r'Rank Stat:\s*([\d\.]+)', first_line)
+    time_match = re.search(r'Time:\s*([\d\.]+)', first_line)
+    
+    if stat_match:
+        stat_val = float(stat_match.group(1))
+    if time_match:
+        time_val = float(time_match.group(1))
+        
+    if stat_val is None or time_val is None:
+        print(f"Parsing failed for line: {first_line}")
+        
     return stat_val, time_val
 
 def process_single_file(fpath):
