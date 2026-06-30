@@ -42,11 +42,21 @@ def plot_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource):
         # 3. Far computation
         far_bg_yr = (cum_counts / T_bg) * 3.156e7
 
+        # memory safety check -> avoid plotting millions of points
+        max_plot_points = 100000
+        if len(sorted_bg) > max_plot_points:
+            stride = len(sorted_bg) // max_plot_points
+            sorted_bg_plot = sorted_bg[::stride]
+            far_bg_yr_plot = far_bg_yr[::stride]
+        else:
+            sorted_bg_plot = sorted_bg
+            far_bg_yr_plot = far_bg_yr
+
         # plot the distribution of background FAR vs SNR
-        ax.semilogy(sorted_bg, far_bg_yr, color='dimgray', linewidth=2, alpha=0.8)
+        ax.semilogy(sorted_bg_plot, far_bg_yr_plot, color='dimgray', linewidth=2, alpha=0.8)
         bg_patch = mpatches.Patch(color='gray', alpha=0.7, label='Empirical Background')
         # stylizing the plot
-        ax.fill_between(sorted_bg, far_bg_yr, 1e-5, color='silver', alpha=0.3)
+        ax.fill_between(sorted_bg_plot, far_bg_yr_plot, 1e-5, color='silver', alpha=0.3)
 
     # top trigger FAR computation
     n_louder = np.sum(valid_bg >= top_stat)
@@ -108,9 +118,18 @@ def plot_fitted_far_vs_snr(bg_stats, top_stat, T_bg, plot_path, T_onsource, fit_
         cum_counts = np.arange(len(sorted_bg), 0, -1)
         far_bg_yr = (cum_counts / T_bg) * 3.156e7
 
+        max_plot_points = 100000
+        if len(sorted_bg) > max_plot_points:
+            stride = len(sorted_bg) // max_plot_points
+            sorted_bg_plot = sorted_bg[::stride]
+            far_bg_yr_plot = far_bg_yr[::stride]
+        else:
+            sorted_bg_plot = sorted_bg
+            far_bg_yr_plot = far_bg_yr
+
         # empirical bg
-        ax.semilogy(sorted_bg, far_bg_yr, color='dimgray', linewidth=2, alpha=0.8, label='Empirical Background')
-        ax.fill_between(sorted_bg, far_bg_yr, 1e-20, color='silver', alpha=0.3)
+        ax.semilogy(sorted_bg_plot, far_bg_yr_plot, color='dimgray', linewidth=2, alpha=0.8, label='Empirical Background')
+        ax.fill_between(sorted_bg_plot, far_bg_yr_plot, 1e-20, color='silver', alpha=0.3)
 
         # EXP FIT
         x_rounded = np.round(sorted_bg, decimals=2) # Round to 2 decimals to group close SNRs together

@@ -241,7 +241,7 @@ def main():
                 f"--exclude-top-steps {args.exclude_top_steps} --segment-length {args.segment_length} "
                 f"--slide-shift {args.slide_shift} --n-ifos {args.n_ifos}"
             )
-            mem = "1GB"
+            mem = "8GB"
             disk = "500MB"
 
         ldg_line = f"accounting_group = {args.ldg_tag}\n" if args.ldg_tag else ""
