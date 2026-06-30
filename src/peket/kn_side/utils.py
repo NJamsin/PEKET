@@ -1,5 +1,5 @@
 #  Import necessary libraries and functions
-
+from .config import models
 import numpy as np
 import pandas as pd
 import astropy.units as u
@@ -380,11 +380,10 @@ def abs_to_app_mag(mag_abs, distance_mpc):
         mag_app[filter] = mags + distance_modulus
     return mag_app
 
-def add_noise_error(mag, noise_level=0.3, max_error_level=0.6):
+def add_noise_error(mag, noise_level=0, max_error_level=0.1):
     noisy = {}
     errors = {}
     for filter, mags in mag.items():
-        print(f"Adding noise to filter {filter} with noise level {noise_level}")
         noise = np.random.normal(0, noise_level, size=mags.shape)
         noisy[filter] = mags + noise
         err = []
@@ -399,7 +398,7 @@ def add_noise_error(mag, noise_level=0.3, max_error_level=0.6):
         errors[filter] = np.array(err)
     return noisy, errors
 
-def format_nmma_data_v2(times, mag, errors, filters, trigger_iso = '2025-01-01T00:00:00', timeshift=0):
+def format_nmma_data_v2(times, mag, errors, filters, trigger_iso = '2025-01-01T00:00:00'):
     data_dict = {}
     # format NMMA : ISOTIME, BAND, MAG, MAG_ERR : 2017-08-18T00:00:00.000 ps1::g 17.41000 0.02000
     # convert svd time to NMMA time format
@@ -411,12 +410,12 @@ def format_nmma_data_v2(times, mag, errors, filters, trigger_iso = '2025-01-01T0
     trigger_dt = pd.to_datetime(trigger_iso)
     for t in times:
         iso_dt = trigger_dt + pd.to_timedelta(t, unit='D')
-        if iso_dt.to_julian_date() - 2400000.5 < trigger_mjd - timeshift:
+        if iso_dt.to_julian_date() - 2400000.5 < trigger_mjd:
             iso_times.append('NaN') # if the time is before the trigger, we put NaN to be able to remove it later
             continue
         iso_str = iso_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
         iso_times.append(iso_str)
-    print("ISO times sample:", iso_times)
+    print("Light Curve generated\nISO times sample:", iso_times)
     # construire le format NMMA
     data_rows = []
     for filter in filters:
@@ -427,156 +426,45 @@ def format_nmma_data_v2(times, mag, errors, filters, trigger_iso = '2025-01-01T0
     df = pd.DataFrame(data_rows)
     return df, trigger_mjd
 
-def generate_synth_lc_fiesta(model_name='Bu2026_MLP',
-                    model_param={
-                            "log10_mej_dyn": -2,
-                            "log10_mej_wind": -1,
-                            "inclination_EM": 0.5,
-                            "luminosity_distance": 40,
-                            "v_ej_dyn": 0.2, 
-                            "v_ej_wind": 0.1,
-                            "Ye_dyn": 0.2,
-                            "Ye_wind": 0.35,
-                        },
-                    filters_band=['ps1::g', 'ps1::r', 'ps1::i', 'ps1::z', 'ps1::y'],
-                    noise_level=0.2,
-                    max_error_level=0.4,
-                    trigger_iso='2025-01-01T00:00:00',
-                    pts_per_day=2,
-                    obs_duration=15,
-                    jitter=0.,
-                    save=False,
-                    delay=0,
-                    filename='test_lc_fiesta.dat',
-                    detection_limit_dict={'ps1::g':24.7, 'ps1::r':24.2, 'ps1::i':23.8, 'ps1::z':23.2, 'ps1::y':22.3}):
-    """Generate synthetic lightcurves using SVDLightCurveModel.
-    Parameters
-    ----------
-    model_name : str
-        Name of the SVD model to be used.
-    model_param : dict
-        Dictionary of model parameters.
-    filters_band : list
-        List of filters to be used for the lightcurve generation.
-    sample_times : np.ndarray
-        Array of sample times.
-    noise_level : float
-        Standard deviation of the Gaussian noise to be added.
-    max_error_level : float
-        Maximum error level to be added to the magnitudes.
-    trigger_iso : str
-        ISO formatted trigger time.
-    pts_per_day : int
-        Number of observation points per day.
-    obs_duration : int
-        Duration of the observation in days.
-    jitter : float
-        Maximum jitter to be added to the sample times in days.
-    delay : float
-        Delay in days to be added to the sample times (positive delay means that the first point will be after the trigger time). (Additional delay to the timeshift parameter in model_param). 
-    save : bool
-        If True, save the generated data to a file.
-    filename : str
-        Filename to save the generated data if save is True.
-    detection_limit_dict : dict or None
-        Dictionary specifying detection limits for each filter. If None, no detection limits are applied.
-    
-    Returns
-    -------
-    data_nmma_svd : pd.DataFrame
-        DataFrame containing the synthetic lightcurve data in NMMA format.
-    trigger : float
-        Trigger time in MJD.
-    
-    """
-    print(f"Generating synthetic lightcurve with timeshift = {delay} days")
-    sample_times = np.arange(delay, obs_duration, 1/pts_per_day)
-    for t in range(len(sample_times)):
-        if t == 0:
-            continue # we don't want to add jitter to the first point to be sure that we have a point at the trigger time 
-        sample_times[t] += np.random.uniform(-jitter, jitter)
-    try:
-        model = FiestaKilonovaModel("Bu2026_MLP", filters=filters_band)
-    except Exception as e:
-        print(f"  - {model_name}: error during SVD model creation ->", e)
-        raise e
-    if "timeshift" in model_param:
-        del model_param["timeshift"] # we remove timeshift from the model parameters because it's not a parameter of the model, it's just a shift that we will apply to the sample times later
-    mag_svd = model.generate_lightcurve(sample_times, model_param)
-    mag_svd_noisy, mag_svd_errors = add_noise_error(mag_svd, noise_level=noise_level, max_error_level=max_error_level)
-    mag_svd_noisy_app = abs_to_app_mag(mag_svd_noisy, distance_mpc=model_param["luminosity_distance"])
-    print("Filters:", filters_band)
-    data_nmma_svd, trigger = format_nmma_data_v2(sample_times, mag_svd_noisy_app, mag_svd_errors, filters_band, trigger_iso=trigger_iso, timeshift=0)
-    if detection_limit_dict is not None:
-        # apply detection limits
-        for filter, limit in detection_limit_dict.items():
-            filter_mask = data_nmma_svd[1] == filter # all rows with this filter
-            limit_mask = data_nmma_svd[2] > limit # all rows with mag > limit (mag is an inverted scale)
-            to_remove = filter_mask & limit_mask # combine masks
-            data_nmma_svd = data_nmma_svd[~to_remove]
-    if save:
-        # get the directory path from the executed file path and create the directory if it doesn't exist
-        dirpath = os.getcwd()
-        print(f"Saving synthetic lightcurve data to {dirpath}...")
-        if dirpath:
-            os.makedirs(dirpath, exist_ok=True)
-            filename = os.path.join(dirpath, filename)
-        data_nmma_svd.to_csv(filename, sep=' ', index=False, header=False)
-    return data_nmma_svd, trigger
-
-def abs_to_app_mag(mag_abs, distance_mpc):
-    distance_modulus = 5 * np.log10(distance_mpc) + 25 # distance in Mpc
-    mag_app = {}
-    for filter, mags in mag_abs.items():
-        mag_app[filter] = mags + distance_modulus
-    return mag_app
-
-def generate_synth_lc_v2(model_name='Bu2019lm',
-                    model_param={
-                            "KNphi": 30,
-                            "log10_mej_dyn": -2,
-                            "log10_mej_wind": -1,
-                            "inclination_EM": 0.5,
-                            "luminosity_distance": 40,
-                        },
-                    filters_band=['ps1::g', 'ps1::r', 'ps1::i'],
-                    noise_level=0.3,
-                    max_error_level=0.6,
-                    trigger_iso='2025-01-01T00:00:00',
-                    pts_per_day=2,
-                    obs_duration=15,
-                    delay = 0,
-                    jitter=0.1,
-                    save=False,
-                    filename='synthetic_kilonova_svd.dat',
-                    detection_limit_dict=None,
-                    svd_path="/home/stu_jamsin/jamsin/NMMA/svdmodels"):
+# def a unified generate_synth_lc function that takes a model name and parameters, and generates the synthetic light curve using the appropriate model type (FIESTA or SVD)
+def generate_synth_lc(model_name, 
+                      params,
+                      obs_duration=10.0,
+                      pts_per_day=4,
+                      delay=0.0,
+                      jitter=0.0,
+                      filters=["ps1::g", "ps1::r", "ps1::i"],
+                      noise=0.0,
+                      max_error=0.1,
+                      trigger_iso='2025-01-01T00:00:00',
+                      detection_limit_dict=None,
+                      save=False,
+                      filename="synth_lightcurve.dat",
+                      svd_path=None):
     """
     
-    Generate synthetic lightcurves using SVDLightCurveModel.
+    Generate synthetic lightcurves using SVDLightCurveModel (Ka2017 and bu2019lm) and FIESTA surrogates.
 
     Parameters
     ----------
     model_name : str
         Name of the SVD model to be used.
-    model_param : dict
-        Dictionary of model parameters.
-    filters_band : list
-        List of filters to be used for the lightcurve generation.
-    sample_times : np.ndarray
-        Array of sample times.
-    noise_level : float
+    params : dict
+        Dictionary of model parameters. (timeshift and redshift are not needed)
+    filters : list
+        List of filters to be used for the lightcurve generation. (All sncosmo filters are supported for FIESTA surrogates, for SVD models they are limited)
+    noise : float
         Standard deviation of the Gaussian noise to be added.
-    max_error_level : float
+    max_error : float
         Maximum error level to be added to the magnitudes.
     trigger_iso : str
-        ISO formatted trigger time.
+        ISOT formatted trigger time.
     pts_per_day : int
         Number of observation points per day.
     obs_duration : int
         Duration of the observation in days.
     delay : float
-        Delay in days to be added to the sample times (positive delay means that the first point will be after the trigger time). (Additional delay to the timeshift parameter in model_param). (Here to combine LSST + ZTF sampling)
+        Delay in days to be added to the sample times (positive delay means that the first point will be after the trigger time = timeshift)
     jitter : float
         Maximum jitter to be added to the sample times in days.
     save : bool
@@ -590,41 +478,68 @@ def generate_synth_lc_v2(model_name='Bu2019lm',
     
     Returns
     -------
-    data_nmma_svd : pd.DataFrame
+    lc_df : pd.DataFrame
         DataFrame containing the synthetic lightcurve data in NMMA format.
     trigger : float
         Trigger time in MJD.
     
     """
-    print(f"Generating synthetic lightcurve with timeshift = {delay} days")
-    model_param["timeshift"] = 0.0 # we set timeshift to 0 for the generation and we will apply it later to the sample time array 
+    model_info = models.get(model_name)
+    if model_info is None:
+        raise ValueError(f"Model {model_name} not found in the available models.\nList of available models: {list(models.keys())}")
+    # check parameters consistency with the model's expected parameters
+    expected_params = model_info["params"]
+    for key in expected_params.keys():
+        if key not in params and key not in ["timeshift", "redshift"]:
+            raise ValueError(f"Missing parameter '{key}' for model '{model_name}'. Expected parameters: {list(expected_params.keys())}")
+    if "timeshift" in params: # we want to avoid timeshift in the params as it is covered by delay
+        del params["timeshift"]
+    if "redshift" in params: # we want to avoid redshift in the params as it is covered by distance
+        del params["redshift"]
+    print(f"Generating synthetic light curve for model: {model_name}")
+
+    # define the observation duration and sampling rate
     sample_times = np.arange(delay, obs_duration, 1/pts_per_day)
     for t in range(len(sample_times)):
         if t == 0:
-            continue # we don't want to add jitter to the first point to be sure that we have a point at the trigger time 
+            continue # we don't want to add jitter to the first point to avoid negative times
         sample_times[t] += np.random.uniform(-jitter, jitter)
-    try:
-        svd_model = SVDLightCurveModel(
-                model=model_name,
-                sample_times=sample_times,
-                svd_path=svd_path,
-                interpolation_type='tensorflow',
-                filters=filters_band
-        )
-    except Exception as e:
-        print(f"  - {model_name}: error during SVD model creation ->", e)
-    mag_svd = svd_model.generate_lightcurve(sample_times, model_param)
-    mag_svd_noisy, mag_svd_errors = add_noise_error(mag_svd, noise_level=noise_level, max_error_level=max_error_level)
-    mag_svd_noisy_app = abs_to_app_mag(mag_svd_noisy, distance_mpc=model_param["luminosity_distance"])
-    print("Filters:", filters_band)
-    data_nmma_svd, trigger = format_nmma_data_v2(sample_times, mag_svd_noisy_app, mag_svd_errors, filters_band, trigger_iso=trigger_iso, timeshift=0)
+
+    kind = model_info["kind"]
+    if kind in ["KN", "GRB"]:
+        # Fiesta model
+        try:
+            model = FiestaKilonovaModel(model_name, filters=filters)
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize Fiesta model for {model_name}: {e}")
+    elif kind == "svd":
+        if svd_path is None:
+            raise ValueError(f"svd_path must be provided for SVD model {model_name}.")
+        try:
+            model = SVDLightCurveModel(
+                    model=model_name,
+                    sample_times=sample_times,
+                    svd_path=svd_path,
+                    interpolation_type='tensorflow',
+                    filters=filters
+            )
+        except Exception as e:
+            print(f"  - {model_name}: error during SVD model creation ->", e)
+    # generate the light curve using the appropriate model + noise/error and convert to apparent magnitude
+    mag_svd = model.generate_lightcurve(sample_times, params)
+    mag_svd_noisy, mag_svd_errors = add_noise_error(mag_svd, noise_level=noise, max_error_level=max_error)
+    mag_svd_noisy_app = abs_to_app_mag(mag_svd_noisy, distance_mpc=params["luminosity_distance"])
+
+    # organize for NMMA format
+    lc_df, trigger = format_nmma_data_v2(sample_times, mag_svd_noisy_app, mag_svd_errors, filters, trigger_iso=trigger_iso)
+
     if detection_limit_dict is not None:
         # apply detection limits
         for filter, limit in detection_limit_dict.items():
-            filter_mask = data_nmma_svd[1] == filter # all rows with this filter
-            limit_mask = data_nmma_svd[2] > limit # all rows with mag > limit (mag is an inverted scale)
+            filter_mask = lc_df[1] == filter # all rows with this filter
+            limit_mask = lc_df[2] > limit # all rows with mag > limit (mag is an inverted scale)
             to_remove = filter_mask & limit_mask # combine masks
-            data_nmma_svd = data_nmma_svd[~to_remove]
+            lc_df = lc_df[~to_remove]
     if save:
         # get the directory path from the executed file path and create the directory if it doesn't exist
         dirpath = os.getcwd()
@@ -632,15 +547,15 @@ def generate_synth_lc_v2(model_name='Bu2019lm',
         if dirpath:
             os.makedirs(dirpath, exist_ok=True)
             filename = os.path.join(dirpath, filename)
-        data_nmma_svd.to_csv(filename, sep=' ', index=False, header=False)
-    return data_nmma_svd, trigger
+        lc_df.to_csv(filename, sep=' ', index=False, header=False)
+    return lc_df, trigger
 
 def generate_synth_lc_lsst(source,
                     model_name,
-                    model_param,
+                    params,
                     save=False,
                     filename='test_lc_lsst.dat',
-                    svd_path = "/home/stu_jamsin/jamsin/NMMA/svdmodels"):
+                    svd_path = None):
     '''
     Generate a synthetic light curve based on the LSST observations of a given source and a given model. The light curve is generated for each filter in the observations and then merged together to have a full light curve with all the filters. The generated light curve is then saved to a file if save is True.
 
@@ -654,7 +569,7 @@ def generate_synth_lc_lsst(source,
         Should be an element of the list of sources returned by the function find_valid_sources().
     model_name : str
         Name of the model to be used for the light curve generation (e.g. 'Bu2026_MLP' or 'Bu2019lm').
-    model_param : dict
+    params : dict
         Dictionary containing the parameters of the model to be used for the light curve generation. The keys and values of the dictionary should be coherent with the model used (e.g. for 'Bu2026_MLP', the parameters should be 'log10_mej_dyn', 'log10_mej_wind', 'inclination_EM', 'luminosity_distance', 'v_ej_dyn', 'v_ej_wind', 'Ye_dyn', 'Ye_wind', 'timeshift').
     save : bool
         If True, the generated light curve will be saved to a file with the name specified in filename. If False, the generated light curve will not be saved.
@@ -667,20 +582,33 @@ def generate_synth_lc_lsst(source,
     full_lc : pd.DataFrame
         The generated synthetic light curve with all the filters merged together.
     '''
-    print(f"Generating synthetic lightcurve based on LSST observations...")
+
+    model_info = models.get(model_name)
+    if model_info is None:
+        raise ValueError(f"Model {model_name} not found in the available models.\nList of available models: {list(models.keys())}")
+    # check parameters consistency with the model's expected parameters
+    expected_params = model_info["params"]
+    for key in expected_params.keys():
+        if key not in params and key not in ["timeshift", "redshift"]:
+            raise ValueError(f"Missing parameter '{key}' for model '{model_name}'. Expected parameters: {list(expected_params.keys())}")
+    if "timeshift" in params: # we want to avoid timeshift in the params as it is covered by delay
+        del params["timeshift"]
+    if "redshift" in params: # we want to avoid redshift in the params as it is covered by distance
+        del params["redshift"]
+    print(f"Generating synthetic light curve for model: {model_name}")
 
     # extract the filter from the obs
     filters = source['observations']['filter'].unique()
     print(f"Filters in the observations: {filters.tolist()}")
     # need to transform the filter names to match the ones used in the model: go from i to ps1::i for example
-    filters = [("sdssu" if filt == "u" else f"ps1::{filt}") for filt in filters]
-
-    if model_name == "Bu2026_MLP":
-        try: # instantiate the model
+    if model_info["kind"] == "KN" or model_info["kind"] == "GRB":
+        filters = [f"lsst{filt}" for filt in filters]
+        try:
             model = FiestaKilonovaModel(model_name, filters=filters)
         except Exception as e:
-            print(f"  - {model_name}: error during SVD model creation ->", e)
-            raise e
+            raise RuntimeError(f"Failed to initialize Fiesta model for {model_name}: {e}")
+    else:
+        filters = [("sdssu" if filt == "u" else f"ps1::{filt}") for filt in filters] # not lsst filters, we use the ps1 and sdss filters instead due to nmma lack of support for lsst filters in the SVD models
     
     dic = build_dic(source) # get the diff samples times for each filter
 
@@ -695,9 +623,9 @@ def generate_synth_lc_lsst(source,
         print(f"Sample times for filter {filter}:")
         print(time_samples)
 
-        if model_name == "Bu2026_MLP":
+        if model_info["kind"] == "KN" or model_info["kind"] == "GRB":
             # generate the light curve for the given filter and time samples
-            mag_filter = model.generate_lightcurve(time_samples, model_param)
+            mag_filter = model.generate_lightcurve(time_samples, params)
         else:
             try:
                 svd_model = SVDLightCurveModel(
@@ -710,10 +638,10 @@ def generate_synth_lc_lsst(source,
             except Exception as e:
                 print(f"  - {model_name}: error during SVD model creation ->", e)
                 raise e
-            mag_filter = svd_model.generate_lightcurve(time_samples, model_param)
+            mag_filter = svd_model.generate_lightcurve(time_samples, params)
 
         # transform the mag to observed mag
-        mag_filter = abs_to_app_mag(mag_filter, model_param["luminosity_distance"])
+        mag_filter = abs_to_app_mag(mag_filter, params["luminosity_distance"])
 
         # get the mjd date of the first observation in that filter
         mjd_epoch = source['t0_mjd']
@@ -723,7 +651,10 @@ def generate_synth_lc_lsst(source,
 
         # transform the mag to observed mag based on the m5 samples
         err = {}
-        key = "sdssu" if filter == "u" else f"ps1::{filter}"
+        if model_info["kind"] == "KN" or model_info["kind"] == "GRB":
+            key = f"lsst{filter}"
+        else:
+            key = "sdssu" if filter == "u" else f"ps1::{filter}"
         if key not in mag_filter:
             raise KeyError(f"Missing key in mag_filter: {key}. Available: {list(mag_filter.keys())}")
         err[key] = [None] * len(mag_filter[key])
@@ -734,7 +665,7 @@ def generate_synth_lc_lsst(source,
 
         # format the output to match the expected format by nmma
         list_f = [key]
-        formatted_lc, _ = format_nmma_data_v2(time_samples, mag_filter, err, list_f, iso_epoch, 0)
+        formatted_lc, _ = format_nmma_data_v2(time_samples, mag_filter, err, list_f, iso_epoch)
         # merge it with previous filters (just append the 'formatted_lc' to each other) 
         if full_lc is None:
             full_lc = formatted_lc
@@ -743,8 +674,13 @@ def generate_synth_lc_lsst(source,
 
 
     if save:
+        # get the directory path from the executed file path and create the directory if it doesn't exist
+        dirpath = os.getcwd()
+        print(f"Saving synthetic lightcurve data to {dirpath}...")
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
+            filename = os.path.join(dirpath, filename)
         full_lc.to_csv(filename, sep=' ', index=False, header=False)
-        print(f"Light curve saved to {filename}")
     return full_lc
 
 """
