@@ -296,15 +296,24 @@ def main():
     else:
         num_slides = slide_limiter(args.n_ifos, args.slide_shift, args.segment_length)
 
-    required_longslide_margin = (args.num_longslides - 1) * args.longslide_step
+    # The correct spacing between longslide offsets is exactly stride_dur =
+    # segment_length/2.  With --do-shortslides, one job already covers L1
+    # offset range [0, stride_dur - slide_shift] internally.  Any longslide
+    # offset smaller than stride_dur just duplicates a shortslide already
+    # produced -- it is NOT an independent background draw.  Spacing
+    # longslides by stride_dur tiles the offset axis contiguously:
+    # job k covers [k*stride, (k+1)*stride) with zero overlap or gap.
+    stride_dur = args.segment_length // 2          # integer seconds
+    longslide_step_correct = stride_dur
+    required_longslide_margin = (args.num_longslides - 1) * longslide_step_correct
     args.longslide_margin = max(args.longslide_margin, required_longslide_margin)
 
     # Long-slide offsets: shift L1 relative to H1, always moving AWAY from
     # the on-source window (earlier for the "before" off-source window,
     # later for the "after" one) so the shift stays inside the freshly
     # downloaded margin and never creeps back toward the on-source time.
-    offsets_before = [-k * args.longslide_step for k in range(args.num_longslides)]
-    offsets_after = [k * args.longslide_step for k in range(args.num_longslides)]
+    offsets_before = [-k * longslide_step_correct for k in range(args.num_longslides)]
+    offsets_after = [k * longslide_step_correct for k in range(args.num_longslides)]
 
     # Directories
     BG_SUFFIX = f"{SUFFIX}_background"

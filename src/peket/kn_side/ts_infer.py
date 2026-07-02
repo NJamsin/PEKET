@@ -35,6 +35,7 @@ def main():
     parser.add_argument('--GW-prior', type=str, default='/home/stu_jamsin/jamsin/NMMA/priors/GWBNS.prior', help='Path to the GW prior file for the resampling (default: /home/stu_jamsin/jamsin/NMMA/priors/GWBNS.prior, update as needed)')
     parser.add_argument('--EM-prior', type=str, default='/home/stu_jamsin/jamsin/NMMA/priors/mespriors/Bu19_GW.prior', help='Path to the EM prior file for the resampling (default: /home/stu_jamsin/jamsin/NMMA/priors/mespriors/Bu19_GW.prior, update as needed)')
     parser.add_argument('--restrict-dist-prior', type=float, default=None, help='Whether to restrict the distance prior, will restrict the prior as true_val +/- value (Default is None)')
+    parser.add_argument('--delay', type=float, default=0)
     args = parser.parse_args()
     idx = args.idx
     MODEL = args.model
@@ -210,7 +211,7 @@ def main():
     times = data[0].unique()
 
     # get the trigger time for the config file
-    trigger_time = Time(times[0]).mjd # assuming the first time point is the trigger time
+    trigger_time = Time(times[0]).mjd - args.delay# assuming the first time point is the trigger time
     # get the filter list for the config file
     filters = data[1].unique().tolist() # assuming the second column contains the filter
 
@@ -263,7 +264,7 @@ ylim : [24, 16]
     subprocess.run(cmd_lc, check=True, cwd=BASE_DIR, env=env) 
     # plot the corner plot for the analysis with the full data
     samples = pd.read_csv(f"{BASE_DIR}/minus0/minus0_{idx}_posterior_samples.dat", delimiter=' ', dtype=DTYPE_FLOAT)
-    ts = pd.to_datetime(times[0]) - pd.to_datetime(true_merger_time) # keep the same trigger time as for the original data to see how the timeshift evolves
+    ts = pd.to_datetime(times[0]) - pd.to_datetime(true_merger_time) - args.delay # keep the same trigger time as for the original data to see how the timeshift evolves
     ts = ts.total_seconds() / (3600*24) # convert to days
     try:
         save_corner_plot(samples, truth, ts, f"{BASE_DIR}/minus0/corner_minus0_{idx}.png", "Injection analysis with model "+MODEL)
@@ -298,7 +299,7 @@ ylim : [24, 16]
         data.to_csv(f"{BASE_DIR}/data_minus{j+1}.dat", sep=' ', index=False, header=False)
         # compute the timeshift
         try:
-            ts = pd.to_datetime(data[0][0]) - pd.to_datetime(true_merger_time) # keep the same trigger time as for the original data to see how the timeshift evolves
+            ts = pd.to_datetime(data[0][0]) - pd.to_datetime(true_merger_time) -args.delay# keep the same trigger time as for the original data to see how the timeshift evolves
             ts = ts.total_seconds() / (3600*24) # convert to days
         except Exception as e:
             print(f"Error occurred while computing timeshift: {e}")

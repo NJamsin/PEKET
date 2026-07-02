@@ -39,7 +39,7 @@ def main():
     parser.add_argument("--delay", type=float, default=0.0, help="Delay in days between the trigger and the first observation.")
     parser.add_argument("--detection-limit", nargs='+', help="Detection limits for the synthetic data in the format: filter1:limit1 filter2:limit2 ... (e.g., --detect_limit ps1::g=24.7 ps1::r=24.2)")
     parser.add_argument("--save-json", default=None, action='store_true', help="Whether to save the times and magnitudes for each sample in a json file. (json files will be saved in the same directory as the .dat files)")
-    parser.add_argument("--svd-path", type=str, default="/home/stu_jamsin/jamsin/NMMA/svdmodels", help="Path to the directory containing the svd models.")
+    parser.add_argument("--svd-path", type=str, default="/home/liteul/memoir_code/NMMA/svdmodels", help="Path to the directory containing the svd models.")
     parser.add_argument("--Dl", type=float, default=200.0, help="Maximum luminosity distance in Mpc for the synthetic lightcurves. (default: 200.0 Mpc)")
 
     args = parser.parse_args()
@@ -134,7 +134,7 @@ def main():
     logging.getLogger('matplotlib.texmanager').setLevel(logging.WARNING)
     plt.rcParams['text.usetex'] = False
     plt.rcParams['font.family'] = 'sans-serif'
-    fig, axs = plt.subplots(5, num_lc // 5, figsize=(10*(num_lc // 5), 6*(num_lc // 5)), sharex=True, sharey=True)
+    fig, axs = plt.subplots(num_lc // 5, 5, figsize=(10*(num_lc // 5), 6*(num_lc // 5)), sharex=True, sharey=True)
     for i, sample in enumerate(valid_samples):
         witness = num_lc // 5
 
@@ -183,8 +183,8 @@ def main():
 
         # plot part 
         print(f"Plotting lightcurve {i+1}/{num_lc}...")
-        row = i // (num_lc // 5)
-        col = i % (num_lc // 5)
+        col = i // (num_lc // 5)
+        row = i % (num_lc // 5)
         ax = axs[row, col]
         for band in data_nmma_svd[1].unique():
             band_df = data_nmma_svd[data_nmma_svd[1]==band]

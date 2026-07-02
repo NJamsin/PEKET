@@ -661,7 +661,7 @@ def generate_synth_lc_lsst(source,
 
         for idx, mag in enumerate(mag_filter[key]):
             m5 = m5_samples[idx]
-            mag_filter[key][idx], err[key][idx] = get_obs_mag_from_lsst(filter, mag, m5)
+            mag_filter[key][idx], err[key][idx] = get_obs_mag_from_lsst(filter, mag, m5, kind=model_info["kind"])
 
         # format the output to match the expected format by nmma
         list_f = [key]
@@ -1053,7 +1053,7 @@ def find_valid_sources(df_lsst, n_sources=5, duration=20, min_observations=3, se
     
     return valid_sources
 
-def get_obs_mag_from_lsst(filter, model_mag, m5):
+def get_obs_mag_from_lsst(filter, model_mag, m5, kind="KN"):
     '''
     Compute the observed mag based the 5 sigma depth mag using ``rubin_sim.phot_utils``
     '''
@@ -1061,12 +1061,16 @@ def get_obs_mag_from_lsst(filter, model_mag, m5):
     phot_params = PhotometricParameters(bandpass=filter)
 
     # load filter bandpass with lsst's throughtput files
-    if filter == "u":
-        throughput_dir = os.path.join(get_data_dir(), "throughputs", "sdss")
-        bp_filepath = os.path.join(throughput_dir, f"doi_{filter}.dat")
+    if kind == 'svd':
+        if filter == "u":
+            throughput_dir = os.path.join(get_data_dir(), "throughputs", "sdss")
+            bp_filepath = os.path.join(throughput_dir, f"doi_{filter}.dat")
+        else:
+            throughput_dir = os.path.join(get_data_dir(), "throughputs", "panStarrs")
+            bp_filepath = os.path.join(throughput_dir, f"panStarrs_{filter}.dat")
     else:
-        throughput_dir = os.path.join(get_data_dir(), "throughputs", "panStarrs")
-        bp_filepath = os.path.join(throughput_dir, f"panStarrs_{filter}.dat")
+        throughput_dir = os.path.join(get_data_dir(), "throughputs", "approximate_baseline")
+        bp_filepath = os.path.join(throughput_dir, f"total_{filter}.dat")
     bp = Bandpass()
     bp.read_throughput(bp_filepath)
 
@@ -1145,7 +1149,7 @@ def regenerate_lc_from_truth(idx, truth_file, out_dir, model, filters, cadence, 
             "redshift": np.array(z_at_value(Planck18.luminosity_distance, df_truth["luminosity_distance"].values[0]*u.Mpc)),
             "timeshift": 0
         }
-        lc, _ = generate_synth_lc_fiesta(model_name=model, model_param=model_param, save=1, max_error_level=max_error_level, filters_band=filters, pts_per_day=cadence, delay=delay, filename=out_dir+f"/{idx}/data{idx}.dat", obs_duration=obs_duration, noise_level=noise_level, detection_limit_dict=detection_limit_dict, jitter=jitter, trigger_iso=ISOT_trigger)
+        lc, _ = generate_synth_lc(model_name=model, params=model_param, save=1, max_error=max_error_level, filters=filters, pts_per_day=cadence, delay=delay, filename=out_dir+f"/{idx}/data{idx}.dat", obs_duration=obs_duration, noise=noise_level, detection_limit_dict=detection_limit_dict, jitter=jitter, trigger_iso=ISOT_trigger)
         
 
     elif model == 'Bu2019lm':

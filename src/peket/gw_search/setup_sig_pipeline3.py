@@ -97,7 +97,7 @@ def main():
 
     # significance estimation args (passed to prep and post)
     parser.add_argument("--window", default='both', choices=['both', 'before', 'after'], help="Which off-source window(s) to use.")
-    parser.add_argument("--max-extension", default=4096, type=int, help="Maximum duration to extend to off source window (in seconds).")
+    parser.add_argument("--max-extension", default=0, type=int, help="Maximum duration to extend to off source window (in seconds).")
     parser.add_argument("--OSW-sigma", default='1', choices=['1', '2', '3', "full"], help="Search window sigma size.")
     parser.add_argument("--ldg-tag", default=None, help="The accounting_group tag required for IGWN.")
     parser.add_argument("--chunk-size", default=3000, type=int, help="Number of jobs per chunk to bypass Schedd limits")
@@ -195,7 +195,8 @@ def main():
                   f"--num-longslides {args.num_longslides} "
                   f"(estimated T_bg ~ {t_bg_estimate:.1f} s vs target {t_bg_target:.1f} s)")
 
-        required_longslide_margin = (args.num_longslides - 1) * args.longslide_step
+        stride_dur = args.segment_length // 2
+        required_longslide_margin = (args.num_longslides - 1) * stride_dur
         args.longslide_margin = max(args.longslide_margin, required_longslide_margin)
 
         num_windows_1 = len(durs1)
