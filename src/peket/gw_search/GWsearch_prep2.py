@@ -656,7 +656,7 @@ def main():
         SEGSTART_ARGS="$SEGSTART_ARGS $IFO:113 ${{ifo_lower}}:113"
         SEGEND_ARGS="$SEGEND_ARGS $IFO:17 ${{ifo_lower}}:17"
         PSD_EST_ARGS="$PSD_EST_ARGS $IFO:median ${{ifo_lower}}:median"
-        PSD_SEGLEN_ARGS="$PSD_SEGLEN_ARGS $IFO:32 ${{ifo_lower}}:32"
+        PSD_SEGLEN_ARGS="$PSD_SEGLEN_ARGS $IFO:16 ${{ifo_lower}}:16"
         PSD_STRIDE_ARGS="$PSD_STRIDE_ARGS $IFO:8 ${{ifo_lower}}:8"
         PSD_INVLEN_ARGS="$PSD_INVLEN_ARGS $IFO:16 ${{ifo_lower}}:16"
         HP_ARGS="$HP_ARGS $IFO:20 ${{ifo_lower}}:20"
