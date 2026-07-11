@@ -650,20 +650,20 @@ def main():
         CACHE_ARGS="$CACHE_ARGS $IFO:${{FRAME_CACHES[$IFO]}}"
         GPS_START_ARGS="$GPS_START_ARGS $IFO:${{START_TIME}} ${{ifo_lower}}:${{START_TIME}}"
         GPS_END_ARGS="$GPS_END_ARGS $IFO:${{END_TIME}} ${{ifo_lower}}:${{END_TIME}}"
-        SR_ARGS="$SR_ARGS $IFO:4096 ${{ifo_lower}}:4096"
+        SR_ARGS="$SR_ARGS $IFO:2048 ${{ifo_lower}}:2048"
         PAD_ARGS="$PAD_ARGS $IFO:8 ${{ifo_lower}}:8"
         SEGLEN_ARGS="$SEGLEN_ARGS $IFO:256 ${{ifo_lower}}:256"
-        SEGSTART_ARGS="$SEGSTART_ARGS $IFO:8 ${{ifo_lower}}:8"
-        SEGEND_ARGS="$SEGEND_ARGS $IFO:8 ${{ifo_lower}}:8"
+        SEGSTART_ARGS="$SEGSTART_ARGS $IFO:113 ${{ifo_lower}}:113"
+        SEGEND_ARGS="$SEGEND_ARGS $IFO:17 ${{ifo_lower}}:17"
         PSD_EST_ARGS="$PSD_EST_ARGS $IFO:median ${{ifo_lower}}:median"
-        PSD_SEGLEN_ARGS="$PSD_SEGLEN_ARGS $IFO:16 ${{ifo_lower}}:16"
+        PSD_SEGLEN_ARGS="$PSD_SEGLEN_ARGS $IFO:32 ${{ifo_lower}}:32"
         PSD_STRIDE_ARGS="$PSD_STRIDE_ARGS $IFO:8 ${{ifo_lower}}:8"
         PSD_INVLEN_ARGS="$PSD_INVLEN_ARGS $IFO:16 ${{ifo_lower}}:16"
         HP_ARGS="$HP_ARGS $IFO:20 ${{ifo_lower}}:20"
-        AG_THRESH_ARGS="$AG_THRESH_ARGS $IFO:50 ${{ifo_lower}}:50"
+        AG_THRESH_ARGS="$AG_THRESH_ARGS $IFO:100 ${{ifo_lower}}:100"
         AG_CLUSTER_ARGS="$AG_CLUSTER_ARGS $IFO:0.5 ${{ifo_lower}}:0.5"
         AG_WIDTH_ARGS="$AG_WIDTH_ARGS $IFO:0.25 ${{ifo_lower}}:0.25"
-        AG_PAD_ARGS="$AG_PAD_ARGS $IFO:0.25 ${{ifo_lower}}:0.25"
+        AG_PAD_ARGS="$AG_PAD_ARGS $IFO:0 ${{ifo_lower}}:0"
         AG_TAPER_ARGS="$AG_TAPER_ARGS $IFO:0.25 ${{ifo_lower}}:0.25"
     done
 
@@ -679,8 +679,8 @@ def main():
         --dec {KN_dec} \\
         --trigger-time ${{TT}} \\
         --low-frequency-cutoff 30.0 \\
-        --approximant TaylorF2 \\
-        --order 7 \\
+        --approximant IMRPhenomD \\
+        --order -1 \\
         --sample-rate $SR_ARGS \\
         --pad-data $PAD_ARGS \\
         --segment-length $SEGLEN_ARGS \\
@@ -700,7 +700,7 @@ def main():
         --sngl-snr-threshold 4.0 \\
         --chisq-bins 16 \\
         --cluster-method window \\
-        --cluster-window 1.0 \\
+        --cluster-window 0.1 \\
         --output {OUT_DIR}/{SUFFIX}triggers_bank${{BANK_NUM}}_${{START_TIME}}-${{END_TIME}}.hdf
     """
 
