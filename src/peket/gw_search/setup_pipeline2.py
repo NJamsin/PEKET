@@ -184,7 +184,7 @@ def main():
         datafind_cfg = config['GW_search'].get('datafind', {})
         use_datafind = bool(datafind_cfg)
         if use_datafind and sub_name == "prep.sub":
-            env_line = f"environment = \"PYTHONUNBUFFERED=1; GW_DATA_SERVER={args.gwdata_server}\"\n"
+            env_line = f"environment = \"PYTHONUNBUFFERED=1; GWDATAFIND_SERVER={args.gwdata_server}\"\n"
         else:
             env_line = "environment = \"PYTHONUNBUFFERED=1\"\n"
       
