@@ -90,6 +90,7 @@ def main():
     parser.add_argument("--n-background", default=50, type=int, help="Number of background windows/slides to use.") 
     # LDG tag
     parser.add_argument("--ldg-tag", default=None, help="The \"accounting_group\" tag required for submitting to the LDG cluster. If not specified, the pipeline will be generated without the tag.")
+    parser.add_argument("--gwdata-server", default="datafind.ligo.org:443", help="GW data server to use for fetching segments. Default is datafind.ligo.org:443 (LDG datafind only).")
     # Multi-detector / coincidence args -- MUST match the defaults/behavior of GWsearch_prep2.py,
     # since they're used both to pass flags to the prep job AND to pre-compute the exact number
     # of search jobs/chunks for the DAG (see get_coincident_segments above).
@@ -126,10 +127,7 @@ def main():
     if os.path.exists(prep_err):
         os.remove(prep_err)
     if os.path.exists(post_err):
-        os.remove(post_err)
-
-    # Dynamically grab the exact Python interpreter currently running this CLI
-    current_python = sys.executable 
+        os.remove(post_err)  
 
     '''
     Create prep.sub and post.sub
@@ -183,6 +181,14 @@ def main():
         else:            
             ldg_line = ""
 
+        datafind_cfg = config['GW_search'].get('datafind', {})
+        use_datafind = bool(datafind_cfg)
+        if use_datafind and sub_name == "prep.sub":
+            env_line = f"environment = \"PYTHONUNBUFFERED=1; GW_DATA_SERVER={args.gwdata_server}\"\n"
+        else:
+            env_line = "environment = \"PYTHONUNBUFFERED=1\"\n"
+      
+
         content = f"""executable     = {cmd_path}
 arguments      = {cmd_args}
 universe       = vanilla
@@ -191,7 +197,7 @@ output         = {logs_dir}/{sub_name.replace('.sub', '.out')}
 error          = {logs_dir}/{sub_name.replace('.sub', '.err')}
 log            = {logs_dir}/pipeline.log
 
-environment    = "PYTHONUNBUFFERED=1"
+{env_line}
 
 request_cpus   = 1
 request_memory = {mem}
