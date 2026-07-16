@@ -575,6 +575,10 @@ def main():
         if not coincident_segments:
             print(f" *** No segment with at least {args.min_ifos} detectors on was found in this window. Aborting. ***")
             sys.exit(1)
+    else:
+        print(f"\nSkipping GWOSC DQ query (use_datafind=True) -> treating the full window "
+            f"[{global_start}, {global_end}] as a single segment with all requested detectors.")
+        coincident_segments = [(global_start, global_end, tuple(detectors))]
 
     WINDOW_FILE = f"{BASE_DIR}/{SUFFIX}_windows.txt"
 
