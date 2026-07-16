@@ -1113,7 +1113,7 @@ def build_dic(source):
 '''
 Other utils (for ts-loop)
 '''
-
+# A MODIF !!!!
 def regenerate_lc_from_truth(idx, truth_file, out_dir, model, filters, cadence, delay, noise_level, max_error_level=0.4, obs_duration=15, detection_limit_dict=None, jitter=0.0, svd_path="/home/stu_jamsin/jamsin/NMMA/svdmodels", ISOT_trigger="2020-01-07T00:00:00.000"):
     '''
     Regenerate a synthetic light curve from a given truth file and save it to the specified output directory.

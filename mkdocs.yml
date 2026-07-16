@@ -35,8 +35,8 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Command line tools:
-    - gw-setup-pipeline: tools/gw-setup-pipeline.md
-    - gw-search-significance: tools/gw-search-significance.md
+    - gw-setup-pipeline / gw-setup-pipeline2: tools/gw-setup-pipeline.md
+    - gw-setup-sig / gw-setup-sig3: tools/gw-search-significance.md
     - kn-make-grid: tools/kn-make-grid.md
     - kn-ts-loop: tools/kn-ts-loop.md
   - Tutorials & Utilities: tutorials.md

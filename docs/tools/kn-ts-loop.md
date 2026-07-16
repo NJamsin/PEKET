@@ -1,3 +1,5 @@
+# WARNING: Obsolete CLI (still implemented but not useful)
+
 # kn-ts-loop
 
 Performs iterative inference on synthetic or real kilonova lightcurve data by progressively removing early detection points. Evaluates how the inferred timeshift evolves.

@@ -11,6 +11,8 @@ Examples and tutorials are provided in the GitHub repository under the [`example
 * **Artificial Injection:** A KN generated with NMMA (`Bu2019lm`) with an injected GW in real H1/L1 strain data. Outputs are located in [`test_injection`](https://github.com/NJamsin/PEKET/tree/main/test_injection).
 * **Timeshift Loop Tutorial:** A guide on combining `kn-ts-loop`, `kn-make-grid`, and `plot_param_evolution` is available in the [`example_file/ts-loop`](https://github.com/NJamsin/PEKET/tree/main/example_file/ts-loop) directory. It includes example prior files for all supported models.
 
+The synthetic-lightcurve helpers all use the model registry declared in `peket.kn_side.config`. The current registry includes the `Bu2019lm` and `Ka2017` grids, the newer `Bu2025_*`, `Bu2026_*`, and `Brethauer2025_*` surrogate families, and the GRB-oriented `afgpy_*`, `blastwave_*`, and `pbag_*` model families.
+
 ---
 
 ## Utilities (`peket.kn_side.utils`)
@@ -67,6 +69,8 @@ Generates a full synthetic lightcurve based on LSST observations of a given sour
 | `svd_path` | `str` | *Custom* | Path to SVD models (used if model is not `Bu2026_MLP`). |
 
 *Returns:* A pandas DataFrame representing the fully formatted synthetic lightcurve ready for NMMA.
+
+This helper is the main LSST entry point. It accepts any model present in the registry above and dispatches either to the FIESTA surrogate path or to the SVD-based NMMA lightcurve model as needed.
 
 **Example of use of LSST related functions**
 ```python
@@ -173,6 +177,8 @@ This function acts as a wrapper around the core synthetic lightcurve generation 
 | `ISOT_trigger` | `str` | `'2020-01-07T00:00:00.000'` | ISOT time of the GW trigger. |
 
 *Returns:* A pandas DataFrame containing the regenerated synthetic lightcurve, formatted for NMMA. It also saves the `.dat` file and a copy of the truth `.csv` file in `{out_dir}/{idx}/`.
+
+The same model registry applies here, which means the helper can be used with the historical `Bu2019lm` / `Ka2017` grids as well as the newer surrogate families.
 
 **Example**
 ```python

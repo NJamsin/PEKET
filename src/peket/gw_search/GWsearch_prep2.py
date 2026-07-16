@@ -14,6 +14,11 @@ from gwpy.timeseries import TimeSeries
 import urllib.request
 from gwosc.locate import get_urls
 from gwosc.timeline import get_segments
+try:
+    import gwdatafind
+    HAVE_GWDATAFIND = True
+except ImportError:
+    HAVE_GWDATAFIND = False
 import glob
 import yaml
 import sys
@@ -73,7 +78,7 @@ def preparer_donnees(args, config, DATA_DIR, SUFFIX, BASE_DIR, fichiers, canal, 
                 
                 print(f" -> Chunk {chunk_idx}: {int(current_start)} to {int(current_end)}")
 
-                # find files overlapping with the current chunk (we want to pass only those to gwpy to minimize padding issues and speed up the reading)
+                # find files overlapping with the current chunk 
                 overlapping_files = []
                 for f in fichiers:
                     basename = os.path.basename(f)
@@ -89,7 +94,7 @@ def preparer_donnees(args, config, DATA_DIR, SUFFIX, BASE_DIR, fichiers, canal, 
                 # 2. read files or replace with noise if no files or if gwpy read fails
                 if not overlapping_files:
                     # The detector was offline for this entire chunk. Skip reading completely!
-                    print(f"    *** No data files found for this chunk. Synthesizing noise... ***")
+                    print(f"    *** No data files found for this chunk. Synthesizing Gaussian noise... ***")
                     duration = current_end - current_start
                     data = TimeSeries(np.random.normal(0, 1e-22, int(duration * 4096)), 
                                       t0=current_start, sample_rate=4096, name=canal)
@@ -98,7 +103,7 @@ def preparer_donnees(args, config, DATA_DIR, SUFFIX, BASE_DIR, fichiers, canal, 
                         # Pass ONLY the overlapping files, preventing massive padding leaks
                         data = TimeSeries.read(overlapping_files, canal, start=current_start, end=current_end, pad=np.nan)
                     except Exception as e:
-                        print(f"    *** gwpy read failed: {e}. Synthesizing noise... ***")
+                        print(f"    *** gwpy read failed: {e}. Synthesizing Gaussian noise... ***")
                         duration = current_end - current_start
                         data = TimeSeries(np.random.normal(0, 1e-22, int(duration * 4096)), 
                                           t0=current_start, sample_rate=4096, name=canal)
@@ -106,9 +111,9 @@ def preparer_donnees(args, config, DATA_DIR, SUFFIX, BASE_DIR, fichiers, canal, 
                 # Clean NaNs and Zeros 
                 zero_mask = (data.value == 0.0)
                 data.value[zero_mask] = np.nan
-                print("Replacing NaN values with Gaussian noise...")
                 nan_mask = np.isnan(data.value)
                 if np.any(nan_mask):
+                    print("Replacing NaN values with Gaussian noise...")
                     valid_data = data.value[~nan_mask]
                     if len(valid_data) > 0:
                         std_bruit = np.std(valid_data) * 1e-3 # inject noise at 0.1% of the std because of the bucket
@@ -182,24 +187,71 @@ def robust_get_urls(detector, start, end):
             return urls
 
 
+def robust_find_frames(ifo, frame_type, start, end):
+    """
+    Search for frames using gwdatafind (if available) or fallback to GWOSC public data.
+    Useful on the LDG cluster where gwdatafind is installed and can find local frames, avoiding unnecessary downloads + access more data.
+
+    Returns a sorted list of frame URLs (or empty list if none found).
+    """
+    if not HAVE_GWDATAFIND:
+        raise RuntimeError(
+            " -> Error: gwdatafind is not installed/found."
+        )
+    observatory = ifo[0]  # 'H', 'L' or 'V'
+    urls = gwdatafind.find_urls(
+        observatory, frame_type, int(start), int(end), urltype="file"
+    )
+    if not urls:
+        print(f" -> Warning: gwdatafind found no frames for {ifo} "
+              f"(frame_type={frame_type}) between {int(start)} and {int(end)}.")
+    return sorted(urls)
+
+def build_direct_cache(ifo, canal, filepaths, cache_file):
+    """
+    Skips prepare_donnees and builds a direct LAL cache file from the given list of filepaths.
+ 
+    No injection logic provided though.
+    """
+    ifo_letter = ifo[0]
+    cache_entries = []
+    for fp in sorted(filepaths):
+        basename = os.path.basename(fp)
+        parts = basename.replace('.gwf', '').split('-')
+        try:
+            file_start = int(parts[-2])
+            file_duration = int(parts[-1])
+        except (ValueError, IndexError):
+            print(f"    *** Warning: could not parse GPS start/duration from '{basename}', skipping. ***")
+            continue
+        cache_entries.append(
+            f"{ifo_letter} {canal.replace(':', '_')} {file_start} {file_duration} "
+            f"file://localhost{os.path.abspath(fp)}"
+        )
+    with open(cache_file, "w") as f:
+        f.write("\n".join(cache_entries) + "\n")
+    return cache_file
+
+
 def get_coincident_segments(detectors, start, end, min_ifos=2, flag_suffix="DATA", margin=0):
     """
-    Interroge GWOSC (gwosc.timeline.get_segments) pour connaitre les segments
-    "science" de chaque detecteur sur [start, end), puis fait un sweep-line pour
-    trouver les segments contigus ou AU MOINS `min_ifos` detecteurs sont actifs
-    simultanement.
+    Query GWOSC for the science segments of each detector in [start, end], 
+    then perform a sweep-line algorithm to find contiguous segments where 
+    at least `min_ifos` detectors are simultaneously active.
 
-    Retourne une liste de tuples (seg_start, seg_end, (ifo1, ifo2, ...)) triee
-    par seg_start. Le tuple d'ifos donne exactement quels detecteurs utiliser
-    pour --instruments sur ce segment (2 ou 3 selon la coincidence).
+    Returns a list of tuples (seg_start, seg_end, (ifo1, ifo2, ...)) sorted
+    by seg_start. The tuple of ifos gives exactly which detectors to use
+    for --instruments on this segment (2 or 3 depending on the coincidence).
 
-    flag_suffix: "DATA" pour juste la disponibilite des donnees, ou "CBC_CAT1"
-    (voire CAT2/CAT3 en cumulant les segments manuellement) pour un veto qualite
-    plus strict adapte a une recherche CBC.
+    detectors: list of detector names (e.g. ["H1", "L1", "V1"])
 
-    margin: retire `margin` secondes de part et d'autre de chaque segment brut
-    par detecteur avant l'intersection, pour garder une marge de securite par
-    rapport au padding/PSD (pad-data + psd-inverse-length typiquement).
+    flag_suffix: string suffix for the GWOSC timeline flag to query. For example,
+    "DATA" for just data availability, or "CBC_CAT1" (or CAT2/CAT3) for stricter
+    quality vetoes suitable for a CBC search.
+
+    margin: cut `margin` seconds from both ends of each raw segment before computing
+    coincidence, to keep the pad-data/PSD-estimation region inside good data. 
+    Default: 0 (no margin).
     """
     events = []
     for ifo in detectors:
@@ -221,9 +273,7 @@ def get_coincident_segments(detectors, start, end, min_ifos=2, flag_suffix="DATA
             events.append((s_c, 1, ifo))
             events.append((e_c, -1, ifo))
 
-    # a un instant identique, on traite d'abord les fins de segment (-1) puis
-    # les debuts (1), pour rester conservateur aux bornes.
-    events.sort(key=lambda x: (x[0], x[1]))
+    events.sort(key=lambda x: (x[0], x[1])) # sort by time, then by type (start before end)
 
     active = set()
     raw_segments = []
@@ -324,6 +374,27 @@ def main():
     # GW search
     NUM_SPLITS = config['GW_search']['num_splits']
     max_window_size = config['GW_search']['window_size']
+
+    # Datafind config (optional) : if present in the .yaml, it will use
+    # gwdatafind on the LDG cluster rather than public gowsc data
+    # Example of expected structure in the .yaml:
+    #
+    # GW_search:
+    #   datafind:
+    #     H1: {channel_name: "H1:DCS-CALIB_STRAIN_CLEAN_C01", frame_type: "H1_HOFT_C01"}
+    #     L1: {channel_name: "L1:DCS-CALIB_STRAIN_CLEAN_C01", frame_type: "L1_HOFT_C01"}
+    #     V1: {channel_name: "V1:Hoft_16384Hz",               frame_type: "V1Online"}
+    datafind_cfg = config['GW_search'].get('datafind', {})
+    use_datafind = bool(datafind_cfg)
+    if use_datafind:
+        print("Found datafind configuration in YAML -> using gwdatafind (LDG) "
+              "instead of public GWOSC files.")
+        channel_map = {ifo: datafind_cfg[ifo]['channel_name'] for ifo in datafind_cfg}
+        frame_type_map = {ifo: datafind_cfg[ifo]['frame_type'] for ifo in datafind_cfg}
+    else:
+        print("No 'datafind' section found in YAML -> falling back to public GWOSC data.")
+        channel_map = {}
+        frame_type_map = {}
 
     '''
     Step 0: Create the output directory if it doesn't exist
@@ -486,23 +557,24 @@ def main():
     chunk_length = max_window_size
     overlap = 16 # Accounts for 8s padding at start and 8s at end
 
-    print(f"\nQuerying GWOSC timeline ({args.dq_flag} flag) for {detectors} between {global_start} and {global_end}...")
-    coincident_segments = get_coincident_segments(
-        detectors, global_start, global_end,
-        min_ifos=args.min_ifos, flag_suffix=args.dq_flag, margin=args.segment_margin
-    )
+    if not use_datafind:
+        print(f"\nQuerying GWOSC timeline ({args.dq_flag} flag) for {detectors} between {global_start} and {global_end}...")
+        coincident_segments = get_coincident_segments(
+            detectors, global_start, global_end,
+            min_ifos=args.min_ifos, flag_suffix=args.dq_flag, margin=args.segment_margin
+        )
 
-    total_requested = global_end - global_start
-    total_coincident = sum(e - s for s, e, _ in coincident_segments)
-    print(f" -> {len(coincident_segments)} coincident segment(s) found, "
-          f"{total_coincident}s usable out of {total_requested}s requested "
-          f"({100.0 * total_coincident / total_requested:.1f}%).")
-    for s, e, ifos in coincident_segments:
-        print(f"    [{s} - {e}] ({e - s}s) -> {'+'.join(ifos)}")
+        total_requested = global_end - global_start
+        total_coincident = sum(e - s for s, e, _ in coincident_segments)
+        print(f" -> {len(coincident_segments)} coincident segment(s) found, "
+            f"{total_coincident}s usable out of {total_requested}s requested "
+            f"({100.0 * total_coincident / total_requested:.1f}%).")
+        for s, e, ifos in coincident_segments:
+            print(f"    [{s} - {e}] ({e - s}s) -> {'+'.join(ifos)}")
 
-    if not coincident_segments:
-        print(f" *** No segment with at least {args.min_ifos} detectors on was found in this window. Aborting. ***")
-        sys.exit(1)
+        if not coincident_segments:
+            print(f" *** No segment with at least {args.min_ifos} detectors on was found in this window. Aborting. ***")
+            sys.exit(1)
 
     WINDOW_FILE = f"{BASE_DIR}/{SUFFIX}_windows.txt"
 
@@ -545,49 +617,78 @@ def main():
         gps_start = int(time_gps[0]) - 32 # start of the window -32s for padding
         gps_end = int(time_gps[1]) + 32 # end of the window +32s for padding
 
-        downloaded_files = {ifo: [] for ifo in detectors}
-
-        for ifo in detectors:
-            print(f"Locating 4kHz data for {ifo}...")
-            # Fetch URLs for the .gwf frame files at 4096 Hz
-            urls = robust_get_urls(ifo, gps_start, gps_end)
-            
-            for url in urls:
-                filename = url.split('/')[-1]
-                filepath = os.path.join(DATA_DIR, filename)
-                
-                if not os.path.exists(filepath):
-                    print(f"Downloading {filename}...")
-                    urllib.request.urlretrieve(url, filepath)
-                else:
-                    print(f"{filename} already exists locally. Skipping.")
-                    
-                downloaded_files[ifo].append(filepath)
-
-        print("\n--- Download Complete ---")
-        for ifo in detectors:
-            print(f"{ifo} Frame File(s): {','.join(downloaded_files[ifo])}")
-
-        # because your PyCBC command has a padding of 8 seconds.
+        # padding pycbc
         t_start_pycbc = gps_start - 16
         t_end_pycbc = gps_end + 16
 
+        downloaded_files = {ifo: [] for ifo in detectors}
         merger_time = None
-        for ifo in detectors:
-            cache_file, mt = preparer_donnees(
-                args, config, DATA_DIR, SUFFIX, BASE_DIR, downloaded_files[ifo],
-                f"{ifo}:GWOSC-4KHZ_R1_STRAIN", ifo, t_start_pycbc, t_end_pycbc
-            )
-            caches[ifo] = cache_file
-            if mt is not None:
-                merger_time = mt
-        print("Completed! The files are ready for PyCBC.")
+
+        if use_datafind and not args.injection:
+            print("Using gwdatafind to locate frames on the LDG cluster. No injection requested, so we will skip prepare_donnees and build direct LAL cache files.")
+            for ifo in detectors:
+                if ifo not in frame_type_map:
+                    print(f" *** Warning: no data found for {ifo}, this detector will be ignored. ***")
+                    continue
+                canal = channel_map[ifo]
+                print(f"Locating {ifo} frames via gwdatafind (frame_type={frame_type_map[ifo]})...")
+                urls = robust_find_frames(ifo, frame_type_map[ifo], t_start_pycbc, t_end_pycbc)
+                filepaths = [
+                    u[len("file://localhost"):] if u.startswith("file://localhost") else u.replace("file://", "")
+                    for u in urls
+                ]
+                downloaded_files[ifo] = filepaths
+                caches[ifo] = build_direct_cache(ifo, canal, filepaths, caches[ifo])
+                print(f" -> lcf file directly built from original frames: {caches[ifo]}")
+
+        else:
+            for ifo in detectors:
+                if use_datafind and ifo in frame_type_map:
+                    print(f"Locating {ifo} frames via gwdatafind (frame_type={frame_type_map[ifo]})...")
+                    urls = robust_find_frames(ifo, frame_type_map[ifo], gps_start, gps_end)
+                    # Les frames sont deja sur le systeme de fichiers du LDG : on
+                    # convertit juste les file:// urls en chemins locaux, pas de
+                    # telechargement necessaire.
+                    for url in urls:
+                        filepath = url[len("file://localhost"):] if url.startswith("file://localhost") else url.replace("file://", "")
+                        downloaded_files[ifo].append(filepath)
+                else:
+                    print(f"Locating 4kHz data for {ifo} via GWOSC...")
+                    # Fetch URLs for the .gwf frame files at 4096 Hz
+                    urls = robust_get_urls(ifo, gps_start, gps_end)
+ 
+                    for url in urls:
+                        filename = url.split('/')[-1]
+                        filepath = os.path.join(DATA_DIR, filename)
+ 
+                        if not os.path.exists(filepath):
+                            print(f"Downloading {filename}...")
+                            urllib.request.urlretrieve(url, filepath)
+                        else:
+                            print(f"{filename} already exists locally. Skipping.")
+ 
+                        downloaded_files[ifo].append(filepath)
+
+            print("\n--- Frame location complete ---")
+            for ifo in detectors:
+                print(f"{ifo} Frame File(s): {','.join(downloaded_files[ifo])}")
+
+            for ifo in detectors:
+                canal = channel_map.get(ifo, f"{ifo}:GWOSC-4KHZ_R1_STRAIN")
+                cache_file, mt = preparer_donnees(
+                    args, config, DATA_DIR, SUFFIX, BASE_DIR, downloaded_files[ifo],
+                    canal, ifo, t_start_pycbc, t_end_pycbc
+                )
+                caches[ifo] = cache_file
+                if mt is not None:
+                    merger_time = mt
 
         # delete the og file to clean some spaces
-        for ifo in detectors:
-            for filepath in downloaded_files[ifo]:
-                os.remove(filepath)
-                print(f"Deleted {filepath}")
+        if not use_datafind: # avoid deleting local files if we used gwdatafind (they are not ours to delete)
+            for ifo in detectors:
+                for filepath in downloaded_files[ifo]:
+                    os.remove(filepath)
+                    print(f"Deleted {filepath}")
         
         # plot the antenna pattern for the injection if requested
         if args.plot_antenna_pattern and args.injection:
@@ -616,6 +717,13 @@ def main():
     # frame-cache declarations for the bash associative array
     frame_cache_decls = "\n    ".join(f'FRAME_CACHES[{ifo}]="{caches[ifo]}"' for ifo in detectors)
 
+    # channel-name declarations for the bash associative array (fallback sur
+    # le canal GWOSC si l'IFO n'a pas d'entree dans la config datafind)
+    channel_decls = "\n    ".join(
+        f'CHANNELS[{ifo}]="{channel_map.get(ifo, f"{ifo}:GWOSC-4KHZ_R1_STRAIN")}"'
+        for ifo in detectors
+    )
+
     # 1. Content for the bash script
     sh_content = f"""#!/bin/bash
 
@@ -635,6 +743,9 @@ def main():
     declare -A FRAME_CACHES
     {frame_cache_decls}
 
+    declare -A CHANNELS
+    {channel_decls}
+
     IFS=',' read -ra IFO_ARR <<< "$IFOS"
 
     INSTR_ARGS="" ; CHAN_ARGS="" ; CACHE_ARGS=""
@@ -646,7 +757,7 @@ def main():
     for IFO in "${{IFO_ARR[@]}}"; do
         ifo_lower=$(echo "$IFO" | tr '[:upper:]' '[:lower:]')
         INSTR_ARGS="$INSTR_ARGS $IFO"
-        CHAN_ARGS="$CHAN_ARGS $IFO:GWOSC-4KHZ_R1_STRAIN"
+        CHAN_ARGS="$CHAN_ARGS $IFO:${{CHANNELS[$IFO]}}"
         CACHE_ARGS="$CACHE_ARGS $IFO:${{FRAME_CACHES[$IFO]}}"
         GPS_START_ARGS="$GPS_START_ARGS $IFO:${{START_TIME}} ${{ifo_lower}}:${{START_TIME}}"
         GPS_END_ARGS="$GPS_END_ARGS $IFO:${{END_TIME}} ${{ifo_lower}}:${{END_TIME}}"

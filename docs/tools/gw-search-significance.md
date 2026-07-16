@@ -4,6 +4,8 @@ This command-line tool estimates the statistical significance of the top trigger
 
 Unlike the legacy `gw-search-significance` script, `gw-setup-sig` orchestrates a robust **3-node HTCondor DAG** (Preparation -> Parallel Search -> Post-Processing). This prevents cluster overloads, handles "black hole" nodes automatically, and allows accumulating background jobs seamlessly.
 
+The repository also ships `gw-setup-sig3`, which is the newer variant. It adds explicit control over segment length, slide shift, long-slide tiling, and target-significance planning, so it is the preferred reference when you need the current background strategy.
+
 ## Usage
 `gw-setup-sig` requires the path to the same `.yaml` config file used for the initial search.
 
@@ -25,6 +27,25 @@ gw-setup-sig path/to/config.yaml [OPTIONS]
 - `--delay`: Delay in slides between the limits of the OSW and the time slides. Extremely useful for chunking massive background estimations into smaller sequential runs without overwriting previous results.
 - `--max-timeslides`: Maximum duration (in seconds) of background data to prepare (Default: `4096`).
 - `--OSW-sigma`: Size of the On-Source time window (Choices: `1`, `2`, `3`, `full`. Default: `1`).
+- `--chunk-size`: Number of jobs per chunk to bypass Schedd limits.
+- `--fit-steps`: Number of background points used for the exponential fit in post-processing.
+- `--exclude-top-steps`: Number of loudest points excluded from the exponential fit.
+
+## gw-setup-sig3
+
+`gw-setup-sig3` keeps the same high-level job layout but exposes the more advanced background planning logic from `setup_sig_pipeline3.py`.
+
+### Additional Arguments
+- `--max-extension`: Extra off-source data to download beyond the nominal window.
+- `--segment-length`: `pycbc_multi_inspiral` segment length in seconds.
+- `--slide-shift`: `pycbc_multi_inspiral` slide shift in seconds.
+- `--n-ifos`: Number of interferometers used in the background planning.
+- `--target-sigma`: Automatically expands the background strategy to reach a target FAP.
+- `--sigma-safety-factor`: Safety factor applied when targeting a given sigma.
+- `--num-longslides`: Number of long-slide offsets per window.
+- `--longslide-step`: Spacing between long-slide offsets.
+- `--longslide-margin`: Extra headroom for the long-slide downloads.
+- `--window-max-size`: Maximum duration of a single off-source analysis window.
 
 ## Workflow Structure
 The command generates a `significance.dag` file containing three nodes:

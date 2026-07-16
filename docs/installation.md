@@ -4,9 +4,8 @@
 Before installing PEKET, ensure you have the following dependencies correctly set up in your environment:
 
 !!! warning "HTCondor Requirement"
-    ``gw-setup-pipeline`` heavily relies on [HTCondor](https://htcondor.readthedocs.io/en/latest/) to create multiples `.sub` or `.dag` files. Make sure HTCondor is installed on your cluster/device. 
+    The GW DAG builders (`gw-setup-pipeline`, `gw-setup-pipeline2`, `gw-setup-sig`, and `gw-setup-sig3`) heavily rely on [HTCondor](https://htcondor.readthedocs.io/en/latest/) to create multiples `.sub` or `.dag` files. Make sure HTCondor is installed on your cluster/device.
     
-    Dynamic slots are recommended as the main job reserves **16 Gb of RAM**, and sub-jobs reserve **4 Gb**.
     *(Note: HTCondor is not required if you only plan to use `kn-make-grid` and `kn-ts-loop`).*
 
 !!! warning "Important: Python Version"

@@ -1,5 +1,22 @@
 # Changelog
 
+## Latest Updates 0.1.2
+
+### Documentation and MkDocs refresh
+* Reworked the online documentation navigation to expose the current CLI names, including `gw-setup-sig3` and `gw-setup-pipeline2`.
+* Aligned the command-line pages with the code in `src/peket/gw_search` and `src/peket/kn_side`.
+* Expanded the utilities tutorial so it reflects the live model registry in `peket.kn_side.config`.
+
+### GW pipeline updates
+* Added the `gw-setup-sig` HTCondor DAG builder for significance estimation with preparation, background search, and post-processing stages.
+* Added the newer `gw-setup-pipeline2` and `gw-setup-sig3` workflows with multi-detector coincidence handling, long-slide planning, and target-significance tuning.
+* Refined the pipeline options for injection runs, antenna-pattern inspection, background chunking, and fit-based FAR estimation.
+
+### kn_side utilities and model registry
+* Remodeled the lightcurve generation in one function (still uses `nmma` and `fiestEM`).
+* Added regeneration helpers for timeshift-loop studies and per-true-event output materialization.
+* Expanded the supported model registry to all the `fiestaEM` surrogates.
+
 ## Latest Updates 0.1.1
 
 ### Documentation Overhaul

@@ -1,8 +1,8 @@
 # kn-make-grid
 
-Produces a grid of pseudo-randomly sampled synthetic kilonovae lightcurves generated via NMMA/FIESTA. 
+Produces a grid of pseudo-randomly sampled (Halton sampling) synthetic kilonovae lightcurves generated via NMMA/FIESTA. 
 
-Supported models: `Bu2026_MLP`, `Bu2019lm`, and `Ka2017`.
+Supported models: all the models in [models in config.py](https://github.com/NJamsin/peket/blob/main/src/peket/kn_side/config.py).
 
 ## Arguments
 * `--out-dir`: Base directory for output files.
