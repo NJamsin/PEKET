@@ -382,9 +382,9 @@ PARENT PREP CHILD {parents_search}
                             # On ignore les erreurs si ce sont juste les warnings de cache
                             if "CacheMissingWarning" not in err_text and "MPLCONFIGDIR" not in err_text:
                                 is_critical = True
-                                
+
                         if is_critical:
-                            print(f"\n\nCRITICAL ERROR IN {os.path.basename(err_file)}:")
+                            print(f"\n\nCRITICAL ERROR IN {os.path.basename(prep_err)}:")
                             print(err_text)
                             sys.exit(1)
                 #  Check specific error files (if they exist and have content)
